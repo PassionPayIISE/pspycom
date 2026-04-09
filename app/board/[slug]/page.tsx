@@ -3,9 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 type PageProps = {
-  params: Promise<{
+  params: {
     slug: string;
-  }>;
+  };
 };
 
 type PostRow = {
@@ -13,13 +13,11 @@ type PostRow = {
   slug: string;
   title: string;
   content: string;
-  author_id: string;
   created_at: string;
-  updated_at: string;
 };
 
 export default async function BoardDetailPage({ params }: PageProps) {
-  const { slug } = await params;
+  const slug = decodeURIComponent(params.slug);
   const supabase = await createClient();
 
   const {
@@ -31,21 +29,19 @@ export default async function BoardDetailPage({ params }: PageProps) {
     redirect("/login");
   }
 
-  const { data, error } = await supabase
+  const { data: post, error } = await supabase
     .from("board_posts")
-    .select("id, slug, title, content, author_id, created_at, updated_at")
+    .select("id, slug, title, content, created_at")
     .eq("slug", slug)
-    .limit(1);
+    .maybeSingle<PostRow>();
 
   if (error) {
     throw new Error(`게시글 조회 실패: ${error.message}`);
   }
 
-  const post = data?.[0] ?? null;
-
   if (!post) {
-  throw new Error(`slug=${slug} 에 해당하는 게시글을 찾지 못했습니다.`);
-}
+    notFound();
+  }
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-16">

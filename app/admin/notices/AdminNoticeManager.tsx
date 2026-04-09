@@ -2,19 +2,32 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase-browser";
-import { Notice } from "@/types/supabase";
+
+type Notice = {
+  id: string | number;
+  title: string;
+  slug: string;
+  summary: string | null;
+  content: string;
+  pinned?: boolean | null;
+  published?: boolean | null;
+  is_published?: boolean | null;
+  published_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
 
 type Props = {
   initialNotices: Notice[];
 };
 
 type EditState = {
-  id: number | null;
+  id: string | number | null;
   title: string;
   slug: string;
   summary: string;
   content: string;
-  publishedAt: string;
+  published_at: string;
   pinned: boolean;
   published: boolean;
 };
@@ -25,9 +38,23 @@ const emptyEditState: EditState = {
   slug: "",
   summary: "",
   content: "",
-  publishedAt: "",
+  published_at: "",
   pinned: false,
   published: true,
+};
+
+const normalizePublished = (notice: Notice) => {
+  if (typeof notice.published === "boolean") return notice.published;
+  if (typeof notice.is_published === "boolean") return notice.is_published;
+  return true;
+};
+
+const normalizePinned = (notice: Notice) => {
+  return Boolean(notice.pinned);
+};
+
+const normalizePublishedAt = (notice: Notice) => {
+  return notice.published_at ?? "";
 };
 
 export default function AdminNoticeManager({ initialNotices }: Props) {
@@ -102,11 +129,10 @@ export default function AdminNoticeManager({ initialNotices }: Props) {
       slug: notice.slug,
       summary: notice.summary ?? "",
       content: notice.content,
-      publishedAt: notice.published_at ?? "",
-      pinned: notice.pinned,
-      published: notice.published,
+      published_at: normalizePublishedAt(notice),
+      pinned: normalizePinned(notice),
+      published: normalizePublished(notice),
     });
-    setMessage("");
   };
 
   const cancelEdit = () => {
@@ -126,7 +152,7 @@ export default function AdminNoticeManager({ initialNotices }: Props) {
         slug: editState.slug,
         summary: editState.summary || null,
         content: editState.content,
-        published_at: editState.publishedAt || null,
+        published_at: editState.published_at || null,
         pinned: editState.pinned,
         published: editState.published,
         updated_at: new Date().toISOString(),
@@ -145,7 +171,7 @@ export default function AdminNoticeManager({ initialNotices }: Props) {
     await refreshNotices();
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string | number) => {
     const ok = window.confirm("이 공지를 삭제할까?");
     if (!ok) return;
 
@@ -271,11 +297,11 @@ export default function AdminNoticeManager({ initialNotices }: Props) {
 
             <input
               type="date"
-              value={editState.publishedAt}
+              value={editState.published_at}
               onChange={(e) =>
                 setEditState((prev) => ({
                   ...prev,
-                  publishedAt: e.target.value,
+                  published_at: e.target.value,
                 }))
               }
               className="rounded-xl border border-[#e7e5df] px-4 py-3"
@@ -348,56 +374,61 @@ export default function AdminNoticeManager({ initialNotices }: Props) {
           {notices.length === 0 ? (
             <p className="text-sm text-[#6b7280]">등록된 공지가 없다.</p>
           ) : (
-            notices.map((notice) => (
-              <div
-                key={notice.id}
-                className="rounded-2xl border border-[#e7e5df] p-4"
-              >
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-[#1f1f1f]">
-                        {notice.title}
-                      </p>
-                      {notice.pinned && (
-                        <span className="rounded-full bg-[#fff3dd] px-2 py-1 text-xs font-semibold text-[#b96d00]">
-                          중요
-                        </span>
-                      )}
-                      {!notice.published && (
-                        <span className="rounded-full bg-[#f2f2f0] px-2 py-1 text-xs font-semibold text-[#666]">
-                          비공개
-                        </span>
+            notices.map((notice) => {
+              const isPinned = normalizePinned(notice);
+              const isPublished = normalizePublished(notice);
+
+              return (
+                <div
+                  key={String(notice.id)}
+                  className="rounded-2xl border border-[#e7e5df] p-4"
+                >
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-[#1f1f1f]">
+                          {notice.title}
+                        </p>
+                        {isPinned && (
+                          <span className="rounded-full bg-[#fff3dd] px-2 py-1 text-xs font-semibold text-[#b96d00]">
+                            중요
+                          </span>
+                        )}
+                        {!isPublished && (
+                          <span className="rounded-full bg-[#f2f2f0] px-2 py-1 text-xs font-semibold text-[#666]">
+                            비공개
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-1 text-sm text-[#6b7280]">{notice.slug}</p>
+
+                      {notice.summary && (
+                        <p className="mt-2 text-sm text-[#6b7280]">
+                          {notice.summary}
+                        </p>
                       )}
                     </div>
 
-                    <p className="mt-1 text-sm text-[#6b7280]">{notice.slug}</p>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        onClick={() => startEdit(notice)}
+                        className="rounded-xl border border-[#e7e5df] px-4 py-2 text-sm text-[#1f1f1f]"
+                      >
+                        수정
+                      </button>
 
-                    {notice.summary && (
-                      <p className="mt-2 text-sm text-[#6b7280]">
-                        {notice.summary}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex shrink-0 gap-2">
-                    <button
-                      onClick={() => startEdit(notice)}
-                      className="rounded-xl border border-[#e7e5df] px-4 py-2 text-sm text-[#1f1f1f]"
-                    >
-                      수정
-                    </button>
-
-                    <button
-                      onClick={() => handleDelete(notice.id)}
-                      className="rounded-xl border border-red-200 px-4 py-2 text-sm text-red-600"
-                    >
-                      삭제
-                    </button>
+                      <button
+                        onClick={() => handleDelete(notice.id)}
+                        className="rounded-xl border border-red-200 px-4 py-2 text-sm text-red-600"
+                      >
+                        삭제
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 

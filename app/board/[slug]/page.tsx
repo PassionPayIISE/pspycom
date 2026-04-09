@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getBoardPostBySlug } from "@/lib/board";
-import { deleteBoardPostByIdAction } from "@/app/board/[id]/edit/actions";
+import { deleteBoardPostByIdAction } from "@/app/board/[slug]/edit/actions";
 import DeleteBoardPostButton from "@/components/board/DeleteBoardPostButton";
 
 interface BoardDetailPageProps {

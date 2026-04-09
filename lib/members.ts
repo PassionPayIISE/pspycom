@@ -1,17 +1,26 @@
-import { supabase } from "@/lib/supabase";
-import { Member } from "@/types/supabase";
+import { createClient } from "@/lib/supabase-browser";
+
+export type Member = {
+  id: string;
+  name: string;
+  role?: string | null;
+  team?: string | null;
+  image_url?: string | null;
+  created_at?: string | null;
+};
 
 export async function getAllMembers(): Promise<Member[]> {
+  const supabase = createClient();
+
   const { data, error } = await supabase
     .from("members")
     .select("*")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
+    .order("created_at", { ascending: true });
 
   if (error) {
-    console.error("getAllMembers error:", error);
+    console.error("getAllMembers error:", error.message);
     return [];
   }
 
-  return data as Member[];
+  return (data ?? []) as Member[];
 }

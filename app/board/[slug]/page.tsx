@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 type PageProps = {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 };
 
 type PostRow = {
@@ -17,104 +17,33 @@ type PostRow = {
 };
 
 export default async function BoardDetailPage({ params }: PageProps) {
-  const slug = decodeURIComponent(params.slug);
+  const { slug } = await params;
+  const decodedSlug = decodeURIComponent(slug);
+
   const supabase = await createClient();
 
-  const authResult = await supabase.auth.getUser();
-  const user = authResult.data.user;
-  const userError = authResult.error;
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (userError) {
-    return (
-      <main className="mx-auto w-full max-w-4xl px-6 py-16">
-        <pre className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 whitespace-pre-wrap">
-{`auth.getUser() 에러
-message: ${userError.message}
-slug: ${slug}`}
-        </pre>
-      </main>
-    );
-  }
-
-  if (!user) {
+  if (userError || !user) {
     redirect("/login");
   }
 
-  const queryResult = await supabase
+  const { data: post, error } = await supabase
     .from("board_posts")
     .select("id, slug, title, content, created_at")
-    .eq("slug", slug);
+    .eq("slug", decodedSlug)
+    .maybeSingle<PostRow>();
 
-  if (queryResult.error) {
-    return (
-      <main className="mx-auto w-full max-w-4xl px-6 py-16">
-        <pre className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 whitespace-pre-wrap">
-{`board_posts 조회 에러
-slug: ${slug}
-message: ${queryResult.error.message}
-details: ${queryResult.error.details ?? ""}
-hint: ${queryResult.error.hint ?? ""}
-code: ${queryResult.error.code ?? ""}`}
-        </pre>
-      </main>
-    );
+  if (error) {
+    throw new Error(`게시글 조회 실패: ${error.message}`);
   }
 
-  const rows = (queryResult.data ?? []) as PostRow[];
-
-  if (rows.length === 0) {
-    return (
-      <main className="mx-auto w-full max-w-4xl px-6 py-16">
-        <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6">
-          <p className="text-sm font-medium text-yellow-800">
-            게시글을 찾지 못했습니다.
-          </p>
-          <pre className="mt-4 text-sm text-yellow-900 whitespace-pre-wrap">
-{`slug: ${slug}
-rows.length: 0`}
-          </pre>
-          <div className="mt-4">
-            <Link
-              href="/board"
-              className="text-sm underline underline-offset-4"
-            >
-              목록으로 돌아가기
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
+  if (!post) {
+    notFound();
   }
-
-  if (rows.length > 1) {
-    return (
-      <main className="mx-auto w-full max-w-4xl px-6 py-16">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-          <p className="text-sm font-medium text-red-800">
-            동일한 slug를 가진 게시글이 여러 개 있습니다.
-          </p>
-          <pre className="mt-4 text-sm text-red-900 whitespace-pre-wrap">
-{JSON.stringify(
-  {
-    slug,
-    count: rows.length,
-    rows: rows.map((row) => ({
-      id: row.id,
-      slug: row.slug,
-      title: row.title,
-      created_at: row.created_at,
-    })),
-  },
-  null,
-  2
-)}
-          </pre>
-        </div>
-      </main>
-    );
-  }
-
-  const post = rows[0];
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-16">

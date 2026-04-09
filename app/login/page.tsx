@@ -41,17 +41,23 @@ export default function LoginPage() {
     }
 
     const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("id, role, approved, is_active")
-      .eq("id", data.user.id)
-      .single<ProfileRow>();
+  .from("profiles")
+  .select("id, role, approved, is_active")
+  .eq("id", data.user.id)
+  .single<ProfileRow>();
 
-    if (profileError || !profile) {
-      await supabase.auth.signOut();
-      setErrorMessage("회원 정보를 확인할 수 없습니다.");
-      setLoading(false);
-      return;
-    }
+console.log("user.id =", data.user.id);
+console.log("profile =", profile);
+console.log("profileError =", profileError);
+
+if (profileError || !profile) {
+  await supabase.auth.signOut();
+  setErrorMessage(
+    `회원 정보를 확인할 수 없습니다.${profileError?.message ? " " + profileError.message : ""}`
+  );
+  setLoading(false);
+  return;
+}
 
     if (profile.role === "banned" || profile.is_active === false) {
       await supabase.auth.signOut();

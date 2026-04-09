@@ -10,11 +10,11 @@ type PageProps = {
 
 type PostRow = {
   id: string;
-  slug: string | null;
+  slug: string;
   title: string;
-  content: string | null;
+  content: string;
   created_at: string;
-  author_id: string | null;
+  author_id: string;
 };
 
 export default async function BoardDetailPage({ params }: PageProps) {
@@ -29,43 +29,17 @@ export default async function BoardDetailPage({ params }: PageProps) {
     redirect("/login");
   }
 
-  const bySlug = await supabase
-  .from("board_posts")
-  .select("id, slug, title, content, created_at, author_id")
-  .eq("slug", slug)
-  .maybeSingle();
-
-let post = bySlug.data ?? null;
-
-if (!post) {
-  const byId = await supabase
+  const { data: posts, error } = await supabase
     .from("board_posts")
     .select("id, slug, title, content, created_at, author_id")
-    .eq("id", slug)
-    .maybeSingle();
+    .eq("slug", slug)
+    .limit(1);
 
-  post = byId.data ?? null;
-}
-
-if (!post) {
-  notFound();
-}
-
-  post = bySlug.data ?? null;
-
-  if (!post) {
-    const byId = await supabase
-      .from("board_posts")
-      .select("id, slug, title, content, created_at, author_id")
-      .eq("id", slug)
-      .maybeSingle<PostRow>();
-
-    if (byId.error) {
-      throw new Error(`게시글 조회 실패(id): ${byId.error.message}`);
-    }
-
-    post = byId.data ?? null;
+  if (error) {
+    throw new Error(`게시글 조회 실패: ${error.message}`);
   }
+
+  const post = posts?.[0] ?? null;
 
   if (!post) {
     notFound();
@@ -82,7 +56,7 @@ if (!post) {
         </Link>
 
         <Link
-          href={`/board/${post.slug ?? post.id}/edit`}
+          href={`/board/${post.slug}/edit`}
           className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700"
         >
           수정하기
@@ -98,7 +72,7 @@ if (!post) {
         </header>
 
         <div className="mt-8 whitespace-pre-wrap text-gray-800">
-          {post.content ?? ""}
+          {post.content}
         </div>
       </article>
     </main>

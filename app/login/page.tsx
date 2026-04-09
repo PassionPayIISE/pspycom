@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type ProfileRow = {
@@ -15,22 +15,37 @@ type ProfileRow = {
 export default function LoginPage() {
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  const [showResendButton, setShowResendButton] = useState(false);
+
+  useEffect(() => {
+    const urlMessage = searchParams.get("message");
+    if (urlMessage) {
+      setMessage(urlMessage);
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
     setErrorMessage("");
+    setShowResendButton(false);
+
+    const trimmedEmail = email.trim();
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      email: trimmedEmail,
       password,
     });
 
@@ -42,7 +57,10 @@ export default function LoginPage() {
 
     if (!data.user.email_confirmed_at) {
       await supabase.auth.signOut();
-      setErrorMessage("이메일 인증이 완료되지 않았습니다. 메일함의 인증 링크를 먼저 눌러주세요.");
+      setErrorMessage(
+        "이메일 인증이 완료되지 않았습니다. 메일함에서 인증 링크를 먼저 눌러주세요."
+      );
+      setShowResendButton(true);
       setLoading(false);
       return;
     }
@@ -85,6 +103,38 @@ export default function LoginPage() {
     }
 
     router.push("/");
+  };
+
+  const handleResendSignupEmail = async () => {
+    const trimmedEmail = email.trim();
+
+    setResending(true);
+    setMessage("");
+    setErrorMessage("");
+
+    if (!trimmedEmail) {
+      setErrorMessage("인증 메일을 다시 보내려면 이메일을 먼저 입력하세요.");
+      setResending(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: trimmedEmail,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
+      },
+    });
+
+    if (error) {
+      setErrorMessage("인증 이메일 재전송에 실패했습니다.");
+      setResending(false);
+      return;
+    }
+
+    setMessage("인증 이메일을 다시 보냈습니다. 메일함에서 인증 링크를 확인하세요.");
+    setShowResendButton(true);
+    setResending(false);
   };
 
   return (
@@ -160,9 +210,20 @@ export default function LoginPage() {
         )}
 
         {errorMessage && (
-          <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {errorMessage}
-          </p>
+          <div className="space-y-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <p>{errorMessage}</p>
+
+            {showResendButton ? (
+              <button
+                type="button"
+                onClick={handleResendSignupEmail}
+                disabled={resending}
+                className="font-medium underline underline-offset-4 disabled:opacity-50"
+              >
+                {resending ? "인증 메일 재전송 중..." : "인증 이메일 다시 보내기"}
+              </button>
+            ) : null}
+          </div>
         )}
 
         <div className="pt-2 text-sm text-gray-600">

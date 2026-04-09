@@ -1,17 +1,24 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { updateBoardPostAction } from "./actions";
-import { requireApprovedUser } from "@/lib/auth";
 
+type PageProps = {
+  params: Promise<{
+    slug: string;
+  }>;
+};
 
-interface EditBoardPostPageProps {
-  params: Promise<{ id: string }>;
-}
+type PostRow = {
+  id: string;
+  slug: string | null;
+  title: string;
+  content: string | null;
+  created_at: string;
+  author_id: string | null;
+};
 
-export default async function EditBoardPostPage({ params }: EditBoardPostPageProps) {
-  await requireApprovedUser();
-  const { id } = await params;
-
+export default async function BoardDetailPage({ params }: PageProps) {
+  const { slug } = await params;
   const supabase = await createClient();
 
   const {
@@ -22,98 +29,75 @@ export default async function EditBoardPostPage({ params }: EditBoardPostPagePro
     redirect("/login");
   }
 
-  const { data: post, error: postError } = await supabase
-    .from("board_posts")
-    .select("id, title, slug, content, author_id")
-    .eq("id", id)
-    .single();
+  let post: PostRow | null = null;
 
-  if (postError || !post) {
+  const bySlug = await supabase
+    .from("board_posts")
+    .select("id, slug, title, content, created_at, author_id")
+    .eq("slug", slug)
+    .maybeSingle<PostRow>();
+
+  if (bySlug.error) {
+    throw new Error(`게시글 조회 실패(slug): ${bySlug.error.message}`);
+  }
+
+  post = bySlug.data ?? null;
+
+  if (!post) {
+    const byTitle = await supabase
+      .from("board_posts")
+      .select("id, slug, title, content, created_at, author_id")
+      .eq("title", slug.replace(/-/g, " "))
+      .maybeSingle<PostRow>();
+
+    if (byTitle.error) {
+      throw new Error(`게시글 조회 실패(title): ${byTitle.error.message}`);
+    }
+
+    post = byTitle.data ?? null;
+  }
+
+  if (!post) {
+    const byId = await supabase
+      .from("board_posts")
+      .select("id, slug, title, content, created_at, author_id")
+      .eq("id", slug)
+      .maybeSingle<PostRow>();
+
+    if (byId.error) {
+      throw new Error(`게시글 조회 실패(id): ${byId.error.message}`);
+    }
+
+    post = byId.data ?? null;
+  }
+
+  if (!post) {
     notFound();
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  const isAdmin = profile?.role === "admin";
-  const isAuthor = user.id === post.author_id;
-
-  if (!isAdmin && !isAuthor) {
-    redirect(`/board/${post.slug}`);
-  }
-
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-16">
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold tracking-tight">게시글 수정</h1>
-        <p className="mt-2 text-sm text-gray-600">내용을 수정합니다.</p>
+    <main className="mx-auto w-full max-w-4xl px-6 py-16">
+      <div className="mb-6">
+        <Link
+          href="/board"
+          className="text-sm text-gray-600 underline underline-offset-4"
+        >
+          목록으로 돌아가기
+        </Link>
       </div>
 
-      <form
-        action={updateBoardPostAction}
-        className="space-y-6 rounded-2xl border border-gray-200 p-6"
-      >
-        <input type="hidden" name="id" value={post.id} />
+      <article className="rounded-2xl border border-gray-200 bg-white p-8">
+        <header className="border-b border-gray-200 pb-6">
+          <h1 className="text-3xl font-bold tracking-tight">{post.title}</h1>
+          <p className="mt-3 text-sm text-gray-500">
+            작성일 {new Date(post.created_at).toLocaleString("ko-KR")}
+          </p>
+        </header>
 
-        <div className="space-y-2">
-          <label htmlFor="title" className="block text-sm font-medium text-gray-800">
-            제목
-          </label>
-          <input
-            id="title"
-            name="title"
-            type="text"
-            required
-            defaultValue={post.title}
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-          />
+        <div className="mt-8 whitespace-pre-wrap text-gray-800">
+          {post.content ?? ""}
         </div>
-
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-800">현재 slug</label>
-          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-            {post.slug}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="content" className="block text-sm font-medium text-gray-800">
-            내용
-          </label>
-          <textarea
-            id="content"
-            name="content"
-            required
-            rows={12}
-            defaultValue={post.content}
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-          />
-        </div>
-
-        <label className="flex items-center gap-2 text-sm text-gray-800">
-          <input type="checkbox" name="regenerateSlug" />
-          제목 기준으로 slug 다시 생성
-        </label>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            className="rounded-xl bg-black px-5 py-3 text-sm font-medium text-white"
-          >
-            수정 저장
-          </button>
-
-          <a
-            href={`/board/${post.slug}`}
-            className="rounded-xl border border-gray-300 px-5 py-3 text-sm font-medium text-gray-700"
-          >
-            취소
-          </a>
-        </div>
-      </form>
+      </article>
     </main>
   );
 }

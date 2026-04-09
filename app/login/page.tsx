@@ -40,35 +40,46 @@ export default function LoginPage() {
       return;
     }
 
-    const { data: profile, error: profileError } = await supabase
-  .from("profiles")
-  .select("id, role, approved, is_active")
-  .eq("id", data.user.id)
-  .single<ProfileRow>();
-
-console.log("user.id =", data.user.id);
-console.log("profile =", profile);
-console.log("profileError =", profileError);
-
-if (profileError || !profile) {
-  await supabase.auth.signOut();
-  setErrorMessage(
-    `회원 정보를 확인할 수 없습니다.${profileError?.message ? " " + profileError.message : ""}`
-  );
-  setLoading(false);
-  return;
-}
-
-    if (profile.role === "banned" || profile.is_active === false) {
+    // 1) 이메일 인증 여부 먼저 확인
+    if (!data.user.email_confirmed_at) {
       await supabase.auth.signOut();
-      setErrorMessage("탈퇴된 회원입니다.");
+      setErrorMessage("이메일 인증이 완료되지 않았습니다. 메일함의 인증 링크를 확인하세요.");
       setLoading(false);
       return;
     }
 
+    // 2) 프로필 조회
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, role, approved, is_active")
+      .eq("id", data.user.id)
+      .single<ProfileRow>();
+
+    console.log("user.id =", data.user.id);
+    console.log("profile =", profile);
+    console.log("profileError =", profileError);
+
+    if (profileError || !profile) {
+      await supabase.auth.signOut();
+      setErrorMessage(
+        `회원 정보를 확인할 수 없습니다.${profileError?.message ? " " + profileError.message : ""}`
+      );
+      setLoading(false);
+      return;
+    }
+
+    // 3) 비활성/차단 계정
+    if (profile.role === "banned" || profile.is_active === false) {
+      await supabase.auth.signOut();
+      setErrorMessage("탈퇴되었거나 비활성화된 회원입니다.");
+      setLoading(false);
+      return;
+    }
+
+    // 4) 관리자 승인 여부
     if (profile.approved !== true) {
       await supabase.auth.signOut();
-      setErrorMessage("아직 관리자 승인이 완료되지 않았습니다.");
+      setErrorMessage("이메일 인증은 완료되었지만 아직 관리자 승인이 완료되지 않았습니다.");
       setLoading(false);
       return;
     }

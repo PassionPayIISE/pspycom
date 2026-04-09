@@ -4,22 +4,6 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-function makeSlug(title: string) {
-  return title
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w\-가-힣]/g, "")
-    .replace(/\-+/g, "-")
-    .replace(/^\-+|\-+$/g, "");
-}
-
-function makeUniqueSlug(title: string) {
-  const base = makeSlug(title) || "post";
-  const suffix = crypto.randomUUID().slice(0, 8);
-  return `${base}-${suffix}`;
-}
-
 export async function createBoardPostAction(formData: FormData) {
   const supabase = await createClient();
 
@@ -43,15 +27,12 @@ export async function createBoardPostAction(formData: FormData) {
     throw new Error("내용을 입력하세요.");
   }
 
-  const slug = makeUniqueSlug(title);
-
   const { data, error } = await supabase
     .from("board_posts")
     .insert({
       title,
       content,
       author_id: user.id,
-      slug,
     })
     .select("id, slug")
     .single();
@@ -61,5 +42,5 @@ export async function createBoardPostAction(formData: FormData) {
   }
 
   revalidatePath("/board");
-  redirect(`/board/${data.slug ?? data.id}`);
+  redirect(`/board/${data.slug}`);
 }

@@ -29,17 +29,27 @@ export default async function BoardDetailPage({ params }: PageProps) {
     redirect("/login");
   }
 
-  let post: PostRow | null = null;
-
   const bySlug = await supabase
+  .from("board_posts")
+  .select("id, slug, title, content, created_at, author_id")
+  .eq("slug", slug)
+  .maybeSingle();
+
+let post = bySlug.data ?? null;
+
+if (!post) {
+  const byId = await supabase
     .from("board_posts")
     .select("id, slug, title, content, created_at, author_id")
-    .eq("slug", slug)
-    .maybeSingle<PostRow>();
+    .eq("id", slug)
+    .maybeSingle();
 
-  if (bySlug.error) {
-    throw new Error(`게시글 조회 실패(slug): ${bySlug.error.message}`);
-  }
+  post = byId.data ?? null;
+}
+
+if (!post) {
+  notFound();
+}
 
   post = bySlug.data ?? null;
 

@@ -14,6 +14,12 @@ function makeSlug(title: string) {
     .replace(/^\-+|\-+$/g, "");
 }
 
+function makeUniqueSlug(title: string) {
+  const base = makeSlug(title) || "post";
+  const suffix = crypto.randomUUID().slice(0, 8);
+  return `${base}-${suffix}`;
+}
+
 export async function createBoardPostAction(formData: FormData) {
   const supabase = await createClient();
 
@@ -37,7 +43,7 @@ export async function createBoardPostAction(formData: FormData) {
     throw new Error("내용을 입력하세요.");
   }
 
-  const slug = makeSlug(title);
+  const slug = makeUniqueSlug(title);
 
   const { data, error } = await supabase
     .from("board_posts")
@@ -47,7 +53,7 @@ export async function createBoardPostAction(formData: FormData) {
       author_id: user.id,
       slug,
     })
-    .select("slug")
+    .select("id, slug")
     .single();
 
   if (error) {
@@ -55,5 +61,5 @@ export async function createBoardPostAction(formData: FormData) {
   }
 
   revalidatePath("/board");
-  redirect(`/board/${data.slug}`);
+  redirect(`/board/${data.slug ?? data.id}`);
 }

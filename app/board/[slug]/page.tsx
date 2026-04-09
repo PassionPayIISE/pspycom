@@ -47,10 +47,6 @@ export default async function BoardDetailPage({ params }: PageProps) {
   throw new Error(`slug=${slug} 에 해당하는 게시글을 찾지 못했습니다.`);
 }
 
-  if (!post) {
-    notFound();
-  }
-
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-16">
       <div className="mb-6 flex items-center justify-between gap-3">

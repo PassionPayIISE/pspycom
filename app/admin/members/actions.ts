@@ -1,166 +1,141 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createServerClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-type ProfileRole = "pending" | "member" | "admin" | "banned";
+type AdminProfileRow = {
+  id: string;
+  role: "pending" | "member" | "admin" | "banned";
+  approved: boolean;
+  is_active: boolean | null;
+};
 
 async function requireAdmin() {
-  const supabase = await createClient();
+  const supabase = await createServerClient();
 
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
+  if (userError || !user) {
+    throw new Error("로그인이 필요합니다.");
   }
 
-  const { data: myProfile, error } = await supabase
+  const { data: me, error: meError } = await supabase
     .from("profiles")
-    .select("id, role, approved")
+    .select("id, role, approved, is_active")
     .eq("id", user.id)
-    .single();
+    .single<AdminProfileRow>();
 
-  if (error || !myProfile) {
-    redirect("/");
+  if (meError || !me) {
+    throw new Error("관리자 정보를 확인할 수 없습니다.");
   }
 
-  if (myProfile.role !== "admin" || myProfile.approved !== true) {
-    redirect("/");
+  if (me.role !== "admin" || me.approved !== true || me.is_active === false) {
+    throw new Error("관리자 권한이 없습니다.");
   }
 
-  return { supabase, user };
+  return user;
 }
 
-async function updateMemberRole(params: {
-  id: string;
-  role: ProfileRole;
-  approved: boolean;
-  is_active?: boolean;
-  deleted_at?: string | null;
-}) {
-  const { supabase } = await requireAdmin();
-
-  const payload: {
-    role: ProfileRole;
-    approved: boolean;
-    updated_at: string;
-    is_active?: boolean;
-    deleted_at?: string | null;
-  } = {
-    role: params.role,
-    approved: params.approved,
-    updated_at: new Date().toISOString(),
-  };
-
-  if (typeof params.is_active === "boolean") {
-    payload.is_active = params.is_active;
+export async function approveMember(targetUserId: string) {
+  if (!targetUserId) {
+    throw new Error("대상 회원 ID가 없습니다.");
   }
 
-  if (params.deleted_at !== undefined) {
-    payload.deleted_at = params.deleted_at;
-  }
+  await requireAdmin();
 
-  const { error } = await supabase
+  const adminSupabase = createAdminClient();
+
+  const { error } = await adminSupabase
     .from("profiles")
-    .update(payload)
-    .eq("id", params.id);
+    .update({
+      role: "member",
+      approved: true,
+      is_active: true,
+    })
+    .eq("id", targetUserId);
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(`승인 처리 실패: ${error.message}`);
   }
 
   revalidatePath("/admin/members");
 }
 
-export async function approveMemberAction(formData: FormData) {
-  const id = String(formData.get("id") || "").trim();
-
-  if (!id) {
-    throw new Error("회원 ID가 없습니다.");
+export async function rejectMember(targetUserId: string) {
+  if (!targetUserId) {
+    throw new Error("대상 회원 ID가 없습니다.");
   }
 
-  await updateMemberRole({
-    id,
-    role: "member",
-    approved: true,
-    is_active: true,
-    deleted_at: null,
-  });
+  await requireAdmin();
+
+  const adminSupabase = createAdminClient();
+
+  const { error } = await adminSupabase
+    .from("profiles")
+    .update({
+      role: "banned",
+      approved: false,
+      is_active: false,
+    })
+    .eq("id", targetUserId);
+
+  if (error) {
+    throw new Error(`거절 처리 실패: ${error.message}`);
+  }
+
+  revalidatePath("/admin/members");
 }
 
-export async function rejectMemberAction(formData: FormData) {
-  const id = String(formData.get("id") || "").trim();
-
-  if (!id) {
-    throw new Error("회원 ID가 없습니다.");
+export async function promoteToAdmin(targetUserId: string) {
+  if (!targetUserId) {
+    throw new Error("대상 회원 ID가 없습니다.");
   }
 
-  await updateMemberRole({
-    id,
-    role: "pending",
-    approved: false,
-    is_active: true,
-    deleted_at: null,
-  });
+  await requireAdmin();
+
+  const adminSupabase = createAdminClient();
+
+  const { error } = await adminSupabase
+    .from("profiles")
+    .update({
+      role: "admin",
+      approved: true,
+      is_active: true,
+    })
+    .eq("id", targetUserId);
+
+  if (error) {
+    throw new Error(`관리자 승격 실패: ${error.message}`);
+  }
+
+  revalidatePath("/admin/members");
 }
 
-export async function makeAdminAction(formData: FormData) {
-  const id = String(formData.get("id") || "").trim();
-
-  if (!id) {
-    throw new Error("회원 ID가 없습니다.");
+export async function demoteAdminToMember(targetUserId: string) {
+  if (!targetUserId) {
+    throw new Error("대상 회원 ID가 없습니다.");
   }
 
-  await updateMemberRole({
-    id,
-    role: "admin",
-    approved: true,
-    is_active: true,
-    deleted_at: null,
-  });
-}
+  await requireAdmin();
 
-export async function revokeToMemberAction(formData: FormData) {
-  const { user } = await requireAdmin();
-  const id = String(formData.get("id") || "").trim();
+  const adminSupabase = createAdminClient();
 
-  if (!id) {
-    throw new Error("회원 ID가 없습니다.");
+  const { error } = await adminSupabase
+    .from("profiles")
+    .update({
+      role: "member",
+      approved: true,
+      is_active: true,
+    })
+    .eq("id", targetUserId);
+
+  if (error) {
+    throw new Error(`관리자 해제 실패: ${error.message}`);
   }
 
-  if (id === user.id) {
-    throw new Error("자기 자신은 일반회원으로 변경할 수 없습니다.");
-  }
-
-  await updateMemberRole({
-    id,
-    role: "member",
-    approved: true,
-    is_active: true,
-    deleted_at: null,
-  });
-}
-
-export async function kickMemberAction(formData: FormData) {
-  const { user } = await requireAdmin();
-  const id = String(formData.get("id") || "").trim();
-
-  if (!id) {
-    throw new Error("회원 ID가 없습니다.");
-  }
-
-  if (id === user.id) {
-    throw new Error("자기 자신은 추방할 수 없습니다.");
-  }
-
-  await updateMemberRole({
-    id,
-    role: "banned",
-    approved: false,
-    is_active: false,
-    deleted_at: new Date().toISOString(),
-  });
+  revalidatePath("/admin/members");
 }

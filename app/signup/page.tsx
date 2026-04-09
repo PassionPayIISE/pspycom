@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
   const supabase = createClient();
+  const router = useRouter();
 
   const [name, setName] = useState("");
   const [studentId, setStudentId] = useState("");
@@ -56,8 +58,10 @@ export default function SignupPage() {
       return;
     }
 
+    const normalizedEmail = email.trim();
+
     const { error } = await supabase.auth.signUp({
-      email: email.trim(),
+      email: normalizedEmail,
       password,
       options: {
         data: {
@@ -73,12 +77,10 @@ export default function SignupPage() {
       return;
     }
 
-    setMessage("회원가입이 완료되었습니다. 관리자 승인 후 이용 가능합니다.");
-    setName("");
-    setStudentId("");
-    setEmail("");
-    setPassword("");
+    setMessage("인증 코드를 이메일로 보냈습니다.");
     setLoading(false);
+
+    router.push(`/verify-email?email=${encodeURIComponent(normalizedEmail)}`);
   };
 
   return (

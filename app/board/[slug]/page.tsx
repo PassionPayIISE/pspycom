@@ -44,6 +44,10 @@ export default async function BoardDetailPage({ params }: PageProps) {
   const post = data?.[0] ?? null;
 
   if (!post) {
+  throw new Error(`slug=${slug} 에 해당하는 게시글을 찾지 못했습니다.`);
+}
+
+  if (!post) {
     notFound();
   }
 

@@ -1,20 +1,24 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getBoardPostBySlug } from "@/lib/board";
-import { deleteBoardPostByIdAction } from "@/app/board/[slug]/edit/actions";
-import DeleteBoardPostButton from "@/components/board/DeleteBoardPostButton";
-import { requireApprovedUser } from "@/lib/auth";
 
+type PageProps = {
+  params: Promise<{
+    slug: string;
+  }>;
+};
 
-interface BoardDetailPageProps {
-  params: Promise<{ slug: string }>;
-}
+type PostRow = {
+  id: string;
+  slug: string | null;
+  title: string;
+  content: string | null;
+  created_at: string;
+  author_id: string | null;
+};
 
-export default async function BoardDetailPage({ params }: BoardDetailPageProps) {
-  await requireApprovedUser();
+export default async function BoardDetailPage({ params }: PageProps) {
   const { slug } = await params;
-
   const supabase = await createClient();
 
   const {
@@ -25,60 +29,37 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
     redirect("/login");
   }
 
-  const post = await getBoardPostBySlug(slug);
+  const { data: post, error } = await supabase
+    .from("board_posts")
+    .select("id, slug, title, content, created_at, author_id")
+    .eq("slug", slug)
+    .single<PostRow>();
 
-  if (!post) {
+  if (error || !post) {
     notFound();
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  const isAdmin = profile?.role === "admin";
-  const isAuthor = user.id === post.author_id;
-  const canEdit = isAdmin || isAuthor;
-
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-16">
-      <article className="rounded-2xl border border-gray-200 p-8">
-        <div className="mb-6">
+      <div className="mb-6">
+        <Link
+          href="/board"
+          className="text-sm text-gray-600 underline underline-offset-4"
+        >
+          목록으로 돌아가기
+        </Link>
+      </div>
+
+      <article className="rounded-2xl border border-gray-200 bg-white p-8">
+        <header className="border-b border-gray-200 pb-6">
           <h1 className="text-3xl font-bold tracking-tight">{post.title}</h1>
-
           <p className="mt-3 text-sm text-gray-500">
-            작성일: {new Date(post.created_at).toLocaleDateString("ko-KR")}
+            작성일 {new Date(post.created_at).toLocaleString("ko-KR")}
           </p>
-        </div>
+        </header>
 
-        <div className="whitespace-pre-wrap leading-7 text-gray-800">
-          {post.content}
-        </div>
-
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          <Link
-            href="/board"
-            className="rounded-xl border border-gray-300 px-4 py-2 text-sm"
-          >
-            목록
-          </Link>
-
-          {canEdit && (
-            <>
-              <Link
-                href={`/board/${post.id}/edit`}
-                className="rounded-xl border border-gray-300 px-4 py-2 text-sm"
-              >
-                수정
-              </Link>
-
-              <form action={deleteBoardPostByIdAction}>
-                <input type="hidden" name="id" value={post.id} />
-                <DeleteBoardPostButton />
-              </form>
-            </>
-          )}
+        <div className="mt-8 whitespace-pre-wrap text-gray-800">
+          {post.content ?? ""}
         </div>
       </article>
     </main>

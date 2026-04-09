@@ -135,6 +135,15 @@ export default function LoginPage() {
           {loading ? "로그인 중..." : "로그인"}
         </button>
 
+        <div className="flex justify-end">
+          <Link
+            href="/forgot-password"
+            className="text-sm text-gray-600 underline underline-offset-4"
+          >
+            비밀번호를 잊으셨나요?
+          </Link>
+        </div>
+
         {message && (
           <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             {message}

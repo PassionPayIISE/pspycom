@@ -1,12 +1,15 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { updateBoardPostAction } from "./actions";
+import { requireApprovedUser } from "@/lib/auth";
+
 
 interface EditBoardPostPageProps {
   params: Promise<{ id: string }>;
 }
 
 export default async function EditBoardPostPage({ params }: EditBoardPostPageProps) {
+  await requireApprovedUser();
   const { id } = await params;
 
   const supabase = await createClient();

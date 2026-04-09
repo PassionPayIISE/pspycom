@@ -1,19 +1,24 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdminUser } from "@/lib/auth";
 import {
   approveMemberAction,
   rejectMemberAction,
   makeAdminAction,
   revokeToMemberAction,
+  kickMemberAction,
 } from "./actions";
+
+type ProfileRole = "pending" | "member" | "admin" | "banned";
 
 type ProfileRow = {
   id: string;
   email: string | null;
   name: string | null;
-  role: "pending" | "member" | "admin";
+  role: ProfileRole;
   approved: boolean;
+  is_active?: boolean | null;
+  deleted_at?: string | null;
   created_at: string;
   updated_at: string | null;
 };
@@ -47,11 +52,13 @@ function UserCard({
   showApproveButtons = false,
   showAdminButtons = false,
   canRevokeAdmin = false,
+  showKickButton = false,
 }: {
   member: ProfileRow;
   showApproveButtons?: boolean;
   showAdminButtons?: boolean;
   canRevokeAdmin?: boolean;
+  showKickButton?: boolean;
 }) {
   return (
     <div className="rounded-2xl border border-gray-200 p-5">
@@ -62,10 +69,19 @@ function UserCard({
               {member.name?.trim() ? member.name : "이름 없음"}
             </h2>
 
-            <Badge tone={member.role === "admin" ? "black" : member.role === "member" ? "green" : "red"}>
+            <Badge
+              tone={
+                member.role === "admin"
+                  ? "black"
+                  : member.role === "member"
+                  ? "green"
+                  : "red"
+              }
+            >
               {member.role === "admin" && "관리자"}
               {member.role === "member" && "승인회원"}
               {member.role === "pending" && "대기중"}
+              {member.role === "banned" && "추방됨"}
             </Badge>
 
             <Badge tone={member.approved ? "green" : "red"}>
@@ -81,6 +97,10 @@ function UserCard({
             <p>
               <span className="font-medium text-gray-800">가입일:</span>{" "}
               {formatDate(member.created_at)}
+            </p>
+            <p>
+              <span className="font-medium text-gray-800">활성 상태:</span>{" "}
+              {member.is_active === false ? "비활성" : "활성"}
             </p>
             <p className="break-all text-xs text-gray-500">
               <span className="font-medium text-gray-700">ID:</span> {member.id}
@@ -114,15 +134,29 @@ function UserCard({
           )}
 
           {showAdminButtons && member.role === "member" && (
-            <form action={makeAdminAction}>
-              <input type="hidden" name="id" value={member.id} />
-              <button
-                type="submit"
-                className="rounded-xl border border-gray-300 px-4 py-2 text-sm"
-              >
-                관리자로 승격
-              </button>
-            </form>
+            <>
+              <form action={makeAdminAction}>
+                <input type="hidden" name="id" value={member.id} />
+                <button
+                  type="submit"
+                  className="rounded-xl border border-gray-300 px-4 py-2 text-sm"
+                >
+                  관리자로 승격
+                </button>
+              </form>
+
+              {showKickButton && (
+                <form action={kickMemberAction}>
+                  <input type="hidden" name="id" value={member.id} />
+                  <button
+                    type="submit"
+                    className="rounded-xl border border-red-300 px-4 py-2 text-sm text-red-600"
+                  >
+                    추방
+                  </button>
+                </form>
+              )}
+            </>
           )}
 
           {canRevokeAdmin && member.role === "admin" && (
@@ -143,40 +177,37 @@ function UserCard({
 }
 
 export default async function AdminMembersPage() {
+  const { user } = await requireAdminUser();
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data: myProfile } = await supabase
-    .from("profiles")
-    .select("role, approved")
-    .eq("id", user.id)
-    .single();
-
-  if (!myProfile || myProfile.role !== "admin" || myProfile.approved !== true) {
-    redirect("/");
-  }
 
   const { data: profiles, error } = await supabase
     .from("profiles")
-    .select("id, email, name, role, approved, created_at, updated_at")
+    .select(
+      "id, email, name, role, approved, is_active, deleted_at, created_at, updated_at"
+    )
     .order("created_at", { ascending: false });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  const allProfiles = ((profiles ?? []) as ProfileRow[]);
+  const allProfiles = (profiles ?? []) as ProfileRow[];
 
-  const pendingMembers = allProfiles.filter((p) => p.approved === false || p.role === "pending");
-  const approvedMembers = allProfiles.filter((p) => p.role === "member" && p.approved === true);
-  const adminMembers = allProfiles.filter((p) => p.role === "admin" && p.approved === true);
+  const pendingMembers = allProfiles.filter(
+    (p) => p.approved === false && p.role === "pending"
+  );
+
+  const approvedMembers = allProfiles.filter(
+    (p) => p.role === "member" && p.approved === true && p.is_active !== false
+  );
+
+  const adminMembers = allProfiles.filter(
+    (p) => p.role === "admin" && p.approved === true && p.is_active !== false
+  );
+
+  const bannedMembers = allProfiles.filter(
+    (p) => p.role === "banned" || p.is_active === false
+  );
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-16">
@@ -184,7 +215,7 @@ export default async function AdminMembersPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">회원 관리</h1>
           <p className="mt-2 text-sm text-gray-600">
-            가입 대기 회원 승인 및 권한 변경
+            가입 대기 회원 승인, 권한 변경, 추방 관리
           </p>
         </div>
 
@@ -217,11 +248,7 @@ export default async function AdminMembersPage() {
             </div>
           ) : (
             pendingMembers.map((member) => (
-              <UserCard
-                key={member.id}
-                member={member}
-                showApproveButtons
-              />
+              <UserCard key={member.id} member={member} showApproveButtons />
             ))
           )}
         </div>
@@ -244,13 +271,14 @@ export default async function AdminMembersPage() {
                 key={member.id}
                 member={member}
                 showAdminButtons
+                showKickButton
               />
             ))
           )}
         </div>
       </section>
 
-      <section>
+      <section className="mb-12">
         <div className="mb-4 flex items-center gap-2">
           <h2 className="text-2xl font-semibold">관리자</h2>
           <Badge tone="black">{adminMembers.length}명</Badge>
@@ -268,6 +296,25 @@ export default async function AdminMembersPage() {
                 member={member}
                 canRevokeAdmin={member.id !== user.id}
               />
+            ))
+          )}
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-4 flex items-center gap-2">
+          <h2 className="text-2xl font-semibold">추방된 회원</h2>
+          <Badge tone="red">{bannedMembers.length}명</Badge>
+        </div>
+
+        <div className="space-y-4">
+          {bannedMembers.length === 0 ? (
+            <div className="rounded-2xl border border-gray-200 p-8 text-sm text-gray-500">
+              추방된 회원이 없습니다.
+            </div>
+          ) : (
+            bannedMembers.map((member) => (
+              <UserCard key={member.id} member={member} />
             ))
           )}
         </div>

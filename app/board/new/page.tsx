@@ -1,8 +1,11 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createBoardPostAction } from "./actions";
+import { requireApprovedUser } from "@/lib/auth";
+
 
 export default async function NewBoardPostPage() {
+  await requireApprovedUser();
   const supabase = await createClient();
 
   const {

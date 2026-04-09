@@ -5,62 +5,77 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+type ProfileRow = {
+  id: string;
+  role: "pending" | "member" | "admin" | "banned";
+  approved: boolean;
+  is_active?: boolean | null;
+};
+
 export default function LoginPage() {
-  const router = useRouter();
   const supabase = createClient();
+  const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setMessage("");
     setErrorMessage("");
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
 
-    if (error) {
-      setErrorMessage(error.message);
-      setLoading(false);
-      return;
-    }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setErrorMessage("로그인에 실패했습니다.");
+    if (error || !data.user) {
+      setErrorMessage(error?.message ?? "로그인에 실패했습니다.");
       setLoading(false);
       return;
     }
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+      .select("id, role, approved, is_active")
+      .eq("id", data.user.id)
+      .single<ProfileRow>();
 
     if (profileError || !profile) {
-      setErrorMessage("회원 정보를 불러오지 못했습니다.");
+      await supabase.auth.signOut();
+      setErrorMessage("회원 정보를 확인할 수 없습니다.");
       setLoading(false);
       return;
     }
 
+    if (profile.role === "banned" || profile.is_active === false) {
+      await supabase.auth.signOut();
+      setErrorMessage("탈퇴된 회원입니다.");
+      setLoading(false);
+      return;
+    }
+
+    if (profile.approved !== true) {
+      await supabase.auth.signOut();
+      setErrorMessage("아직 관리자 승인이 완료되지 않았습니다.");
+      setLoading(false);
+      return;
+    }
+
+    setMessage("로그인되었습니다.");
+    setLoading(false);
+
     if (profile.role === "admin") {
-      router.push("/admin/notices");
-      router.refresh();
+      router.push("/admin/members");
       return;
     }
 
     router.push("/");
-    router.refresh();
   };
 
   return (
@@ -68,7 +83,7 @@ export default function LoginPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">로그인</h1>
         <p className="mt-2 text-sm text-gray-600">
-          이메일과 비밀번호로 로그인합니다.
+          이메일과 비밀번호를 입력하세요.
         </p>
       </div>
 
@@ -77,7 +92,10 @@ export default function LoginPage() {
         className="space-y-4 rounded-2xl border border-gray-200 p-6"
       >
         <div className="space-y-2">
-          <label htmlFor="email" className="block text-sm font-medium text-gray-800">
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-gray-800"
+          >
             이메일
           </label>
           <input
@@ -92,7 +110,10 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="password" className="block text-sm font-medium text-gray-800">
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-gray-800"
+          >
             비밀번호
           </label>
           <input
@@ -114,17 +135,21 @@ export default function LoginPage() {
           {loading ? "로그인 중..." : "로그인"}
         </button>
 
+        {message && (
+          <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            {message}
+          </p>
+        )}
+
         {errorMessage && (
           <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {errorMessage}
           </p>
         )}
 
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <Link href="/forgot-password" className="underline">
-            비밀번호를 잊으셨나요?
-          </Link>
-          <Link href="/signup" className="underline">
+        <div className="pt-2 text-sm text-gray-600">
+          계정이 없으면{" "}
+          <Link href="/signup" className="font-medium text-black underline">
             회원가입
           </Link>
         </div>

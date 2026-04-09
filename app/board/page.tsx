@@ -1,18 +1,9 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireApprovedUser } from "@/lib/auth";
 import { getBoardPosts } from "@/lib/board";
 
 export default async function BoardPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  await requireApprovedUser();
 
   const posts = await getBoardPosts();
 

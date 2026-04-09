@@ -4,12 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 import { getBoardPostBySlug } from "@/lib/board";
 import { deleteBoardPostByIdAction } from "@/app/board/[slug]/edit/actions";
 import DeleteBoardPostButton from "@/components/board/DeleteBoardPostButton";
+import { requireApprovedUser } from "@/lib/auth";
+
 
 interface BoardDetailPageProps {
   params: Promise<{ slug: string }>;
 }
 
 export default async function BoardDetailPage({ params }: BoardDetailPageProps) {
+  await requireApprovedUser();
   const { slug } = await params;
 
   const supabase = await createClient();

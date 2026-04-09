@@ -1,142 +1,166 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+
+type ProfileRole = "pending" | "member" | "admin" | "banned";
 
 async function requireAdmin() {
   const supabase = await createClient();
 
   const {
     data: { user },
-    error: userError,
   } = await supabase.auth.getUser();
 
-  if (userError || !user) {
-    throw new Error("로그인이 필요합니다.");
+  if (!user) {
+    redirect("/login");
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: myProfile, error } = await supabase
     .from("profiles")
-    .select("role, approved")
+    .select("id, role, approved")
     .eq("id", user.id)
     .single();
 
-  if (
-    profileError ||
-    !profile ||
-    profile.role !== "admin" ||
-    profile.approved !== true
-  ) {
-    throw new Error("관리자만 접근할 수 있습니다.");
+  if (error || !myProfile) {
+    redirect("/");
+  }
+
+  if (myProfile.role !== "admin" || myProfile.approved !== true) {
+    redirect("/");
   }
 
   return { supabase, user };
 }
 
-export async function approveMemberAction(formData: FormData) {
+async function updateMemberRole(params: {
+  id: string;
+  role: ProfileRole;
+  approved: boolean;
+  is_active?: boolean;
+  deleted_at?: string | null;
+}) {
   const { supabase } = await requireAdmin();
 
-  const id = String(formData.get("id") ?? "").trim();
+  const payload: {
+    role: ProfileRole;
+    approved: boolean;
+    updated_at: string;
+    is_active?: boolean;
+    deleted_at?: string | null;
+  } = {
+    role: params.role,
+    approved: params.approved,
+    updated_at: new Date().toISOString(),
+  };
 
-  if (!id) {
-    throw new Error("회원 ID가 없습니다.");
+  if (typeof params.is_active === "boolean") {
+    payload.is_active = params.is_active;
+  }
+
+  if (params.deleted_at !== undefined) {
+    payload.deleted_at = params.deleted_at;
   }
 
   const { error } = await supabase
     .from("profiles")
-    .update({
-      role: "member",
-      approved: true,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
+    .update(payload)
+    .eq("id", params.id);
 
   if (error) {
     throw new Error(error.message);
   }
 
   revalidatePath("/admin/members");
+}
+
+export async function approveMemberAction(formData: FormData) {
+  const id = String(formData.get("id") || "").trim();
+
+  if (!id) {
+    throw new Error("회원 ID가 없습니다.");
+  }
+
+  await updateMemberRole({
+    id,
+    role: "member",
+    approved: true,
+    is_active: true,
+    deleted_at: null,
+  });
 }
 
 export async function rejectMemberAction(formData: FormData) {
-  const { supabase } = await requireAdmin();
-
-  const id = String(formData.get("id") ?? "").trim();
+  const id = String(formData.get("id") || "").trim();
 
   if (!id) {
     throw new Error("회원 ID가 없습니다.");
   }
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      role: "pending",
-      approved: false,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/admin/members");
+  await updateMemberRole({
+    id,
+    role: "pending",
+    approved: false,
+    is_active: true,
+    deleted_at: null,
+  });
 }
 
 export async function makeAdminAction(formData: FormData) {
-  const { supabase, user } = await requireAdmin();
-
-  const id = String(formData.get("id") ?? "").trim();
+  const id = String(formData.get("id") || "").trim();
 
   if (!id) {
     throw new Error("회원 ID가 없습니다.");
   }
 
-  if (id === user.id) {
-    throw new Error("현재 로그인한 관리자 본인은 다시 승격할 필요가 없습니다.");
-  }
-
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      role: "admin",
-      approved: true,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/admin/members");
+  await updateMemberRole({
+    id,
+    role: "admin",
+    approved: true,
+    is_active: true,
+    deleted_at: null,
+  });
 }
 
 export async function revokeToMemberAction(formData: FormData) {
-  const { supabase, user } = await requireAdmin();
-
-  const id = String(formData.get("id") ?? "").trim();
+  const { user } = await requireAdmin();
+  const id = String(formData.get("id") || "").trim();
 
   if (!id) {
     throw new Error("회원 ID가 없습니다.");
   }
 
   if (id === user.id) {
-    throw new Error("현재 로그인한 관리자 본인은 일반회원으로 내릴 수 없습니다.");
+    throw new Error("자기 자신은 일반회원으로 변경할 수 없습니다.");
   }
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      role: "member",
-      approved: true,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
+  await updateMemberRole({
+    id,
+    role: "member",
+    approved: true,
+    is_active: true,
+    deleted_at: null,
+  });
+}
 
-  if (error) {
-    throw new Error(error.message);
+export async function kickMemberAction(formData: FormData) {
+  const { user } = await requireAdmin();
+  const id = String(formData.get("id") || "").trim();
+
+  if (!id) {
+    throw new Error("회원 ID가 없습니다.");
   }
 
-  revalidatePath("/admin/members");
+  if (id === user.id) {
+    throw new Error("자기 자신은 추방할 수 없습니다.");
+  }
+
+  await updateMemberRole({
+    id,
+    role: "banned",
+    approved: false,
+    is_active: false,
+    deleted_at: new Date().toISOString(),
+  });
 }

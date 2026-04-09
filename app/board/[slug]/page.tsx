@@ -13,8 +13,9 @@ type PostRow = {
   slug: string;
   title: string;
   content: string;
-  created_at: string;
   author_id: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export default async function BoardDetailPage({ params }: PageProps) {
@@ -23,15 +24,16 @@ export default async function BoardDetailPage({ params }: PageProps) {
 
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (userError || !user) {
     redirect("/login");
   }
 
-  const { data: posts, error } = await supabase
+  const { data, error } = await supabase
     .from("board_posts")
-    .select("id, slug, title, content, created_at, author_id")
+    .select("id, slug, title, content, author_id, created_at, updated_at")
     .eq("slug", slug)
     .limit(1);
 
@@ -39,7 +41,7 @@ export default async function BoardDetailPage({ params }: PageProps) {
     throw new Error(`게시글 조회 실패: ${error.message}`);
   }
 
-  const post = posts?.[0] ?? null;
+  const post = data?.[0] ?? null;
 
   if (!post) {
     notFound();

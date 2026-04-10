@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import CommentForm from "./CommentForm";
-import DeleteCommentButton from "./DeleteCommentButton";
+import { getCommentsByPostId } from "@/lib/comments";
+import CommentForm from "@/components/board/comment-form";
+import CommentList from "@/components/board/comment-list";
 
 type PageProps = {
   params: Promise<{
@@ -17,21 +19,17 @@ type PostRow = {
   author_id: string;
   created_at: string;
   updated_at: string;
-  profiles: {
-    display_name: string | null;
-  }[];
 };
 
-type CommentRow = {
-  id: string;
-  post_id: string;
-  author_id: string;
-  content: string;
-  created_at: string;
-  profiles: {
-    display_name: string | null;
-  }[];
-};
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default async function BoardDetailPage({ params }: PageProps) {
   const { slug } = await params;
@@ -46,142 +44,51 @@ export default async function BoardDetailPage({ params }: PageProps) {
     redirect("/login");
   }
 
-  const { data: post, error: postError } = await supabase
+  const { data: post, error } = await supabase
     .from("board_posts")
-    .select(`
-      id,
-      slug,
-      title,
-      content,
-      author_id,
-      created_at,
-      updated_at,
-      profiles:profiles!board_posts_author_id_fkey (
-        display_name
-      )
-    `)
+    .select("id, slug, title, content, author_id, created_at, updated_at")
     .eq("slug", slug)
-    .single();
+    .single<PostRow>();
 
-  if (postError || !post) {
-    console.error("[post fetch error]", postError);
+  if (error || !post) {
     notFound();
   }
 
-  const { data: comments, error: commentsError } = await supabase
-    .from("comments")
-    .select(`
-      id,
-      post_id,
-      author_id,
-      content,
-      created_at,
-      profiles:profiles!comments_author_id_fkey (
-        display_name
-      )
-    `)
-    .eq("post_id", post.id)
-    .order("created_at", { ascending: true });
-
-  if (commentsError) {
-    console.error("[comments fetch error]", commentsError);
-  }
-
-  const typedPost = post as PostRow;
-  const commentList = (comments ?? []) as CommentRow[];
-
-  const postAuthorName = typedPost.profiles?.[0]?.display_name ?? "이름없음";
+  const comments = await getCommentsByPostId(post.id);
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-16">
-      <article className="rounded-3xl border border-gray-200 bg-white p-8">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-          {typedPost.title}
-        </h1>
+      <div className="mb-6">
+        <Link href="/board" className="text-sm text-gray-500 hover:underline">
+          ← 게시판으로 돌아가기
+        </Link>
+      </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
-          <span>작성자: {postAuthorName}</span>
-          <span>
-            작성일:{" "}
-            {new Date(typedPost.created_at).toLocaleString("ko-KR", {
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-          {typedPost.updated_at !== typedPost.created_at ? (
-            <span>
-              수정일:{" "}
-              {new Date(typedPost.updated_at).toLocaleString("ko-KR", {
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          ) : null}
+      <article className="rounded-3xl border p-8">
+        <div className="mb-6 border-b pb-6">
+          <h1 className="text-3xl font-bold tracking-tight">{post.title}</h1>
+          <p className="mt-3 text-sm text-gray-500">
+            작성일 {formatDate(post.created_at)}
+          </p>
         </div>
 
-        <div className="mt-8 whitespace-pre-wrap break-words text-base leading-7 text-gray-900">
-          {typedPost.content}
+        <div className="whitespace-pre-wrap text-[15px] leading-7">
+          {post.content}
         </div>
       </article>
 
-      <CommentForm postId={typedPost.id} />
-
-      <section className="mt-8">
-        <h2 className="text-xl font-semibold text-gray-900">
-          댓글 {commentList.length}개
-        </h2>
-
-        <div className="mt-4 space-y-4">
-          {commentList.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-500">
-              아직 댓글이 없습니다.
-            </div>
-          ) : (
-            commentList.map((comment) => {
-              const isMine = comment.author_id === user.id;
-              const commentAuthorName =
-                comment.profiles?.[0]?.display_name ?? "이름없음";
-
-              return (
-                <div
-                  key={comment.id}
-                  className="rounded-2xl border border-gray-200 bg-white p-5"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
-                      <span className="font-medium text-gray-800">
-                        {commentAuthorName}
-                      </span>
-                      <span>
-                        {new Date(comment.created_at).toLocaleString("ko-KR", {
-                          year: "numeric",
-                          month: "2-digit",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-
-                    {isMine ? (
-                      <DeleteCommentButton commentId={comment.id} />
-                    ) : null}
-                  </div>
-
-                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-gray-900">
-                    {comment.content}
-                  </p>
-                </div>
-              );
-            })
-          )}
+      <section className="mt-10 space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">댓글 {comments.length}개</h2>
         </div>
+
+        <CommentForm postId={post.id} />
+
+        <CommentList
+          comments={comments}
+          currentUserId={user.id}
+          postSlug={post.slug}
+        />
       </section>
     </main>
   );

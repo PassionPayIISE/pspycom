@@ -8,10 +8,14 @@ import { ActivateMemberUseCase } from "@/application/use-cases/admin/ActivateMem
 import { ChangeRoleUseCase } from "@/application/use-cases/admin/ChangeRoleUseCase";
 import { InviteMemberUseCase } from "@/application/use-cases/admin/InviteMemberUseCase";
 
+// src/container/admin.container.ts
+
+// src/container/admin.container.ts
+
 export async function createAdminContainer() {
   const supabase = await createClient();
   const supabaseAdmin = createAdminClient();
-  const userRepository = new SupabaseUserRepository(supabase);
+  const userRepository = new SupabaseUserRepository(supabaseAdmin); // ← 수정!
 
   return {
     approveMemberUseCase: new ApproveMemberUseCase(userRepository),

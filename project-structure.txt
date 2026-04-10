@@ -1,0 +1,226 @@
+.
+├── .DS_Store
+├── .env.local
+├── .gitignore
+├── AGENTS.md
+├── CLAUDE.md
+├── README.md
+├── app
+│   ├── .DS_Store
+│   ├── admin
+│   │   ├── .DS_Store
+│   │   ├── invites
+│   │   │   ├── InviteForm.tsx
+│   │   │   └── page.tsx
+│   │   ├── login
+│   │   │   └── page.tsx
+│   │   ├── members
+│   │   │   ├── actions.ts
+│   │   │   └── page.tsx
+│   │   └── notices
+│   │       ├── AdminNoticeManager.tsx
+│   │       ├── [id]
+│   │       │   └── edit
+│   │       │       ├── actions.ts
+│   │       │       └── page.tsx
+│   │       ├── actions.ts
+│   │       ├── new
+│   │       │   ├── actions.ts
+│   │       │   └── page.tsx
+│   │       └── page.tsx
+│   ├── api
+│   │   ├── .DS_Store
+│   │   └── admin
+│   │       └── invite
+│   │           └── route.ts
+│   ├── apply
+│   ├── auth
+│   │   └── confirm
+│   │       └── route.ts
+│   ├── blocked
+│   │   └── page.tsx
+│   ├── board
+│   │   ├── .DS_Store
+│   │   ├── [slug]
+│   │   │   ├── CommentForm.tsx
+│   │   │   ├── CommentItem.tsx
+│   │   │   ├── DeleteCommentButton.tsx
+│   │   │   ├── actions.ts
+│   │   │   ├── edit
+│   │   │   │   ├── actions.ts
+│   │   │   │   └── page.tsx
+│   │   │   └── page.tsx
+│   │   ├── actions.ts
+│   │   ├── new
+│   │   │   ├── actions.ts
+│   │   │   └── page.tsx
+│   │   └── page.tsx
+│   ├── favicon.ico
+│   ├── forgot-password
+│   │   └── page.tsx
+│   ├── globals.css
+│   ├── layout.tsx
+│   ├── login
+│   │   ├── LoginPageClient.tsx
+│   │   └── page.tsx
+│   ├── members
+│   │   ├── actions.ts
+│   │   └── page.tsx
+│   ├── notice
+│   │   ├── [slug]
+│   │   │   └── page.tsx
+│   │   └── page.tsx
+│   ├── page.tsx
+│   ├── pending
+│   │   └── page.tsx
+│   ├── recruit
+│   │   └── page.tsx
+│   ├── reset-password
+│   │   └── page.tsx
+│   ├── signup
+│   │   ├── ResendSignupEmailButton.tsx
+│   │   └── page.tsx
+│   ├── update-password
+│   │   └── page.tsx
+│   ├── verify-email
+│   │   ├── VerifyEmailPageClient.tsx
+│   │   └── page.tsx
+│   └── vision
+│       └── page.tsx
+├── eslint.config.mjs
+├── next-env.d.ts
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+├── project-structure.txt
+├── proxy.ts
+├── public
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── pspylogo.png
+│   ├── vercel.svg
+│   └── window.svg
+├── src
+│   ├── .DS_Store
+│   ├── application
+│   │   ├── .DS_Store
+│   │   ├── comments
+│   │   │   └── get-comments-by-post-id.ts
+│   │   ├── dto
+│   │   │   ├── .DS_Store
+│   │   │   ├── admin
+│   │   │   ├── auth
+│   │   │   ├── board
+│   │   │   │   └── CommentItemDto.ts
+│   │   │   ├── member
+│   │   │   │   └── MemberSummaryDto.ts
+│   │   │   └── notice
+│   │   │       └── NoticeDto.ts
+│   │   ├── services
+│   │   └── use-cases
+│   │       ├── .DS_Store
+│   │       ├── admin
+│   │       │   ├── ActivateMemberUseCase.ts
+│   │       │   ├── ApproveMemberUseCase.ts
+│   │       │   ├── ChangeRoleUseCase.ts
+│   │       │   ├── DeactivateMemberUseCase.ts
+│   │       │   └── InviteMemberUseCase.ts
+│   │       ├── auth
+│   │       │   ├── GetCurrentUserProfileUseCase.ts
+│   │       │   ├── RequireAdminUserUseCase.ts
+│   │       │   └── RequireApprovedUserUseCase.ts
+│   │       ├── board
+│   │       │   ├── CreateBoardPostUseCase.ts
+│   │       │   ├── CreateCommentUseCase.ts
+│   │       │   ├── DeleteCommentUseCase.ts
+│   │       │   ├── GetBoardPostDetailUseCase.ts
+│   │       │   ├── GetBoardPostsUseCase.ts
+│   │       │   ├── GetCommentsByPostIdUseCase.ts
+│   │       │   └── UpdateBoardPostUseCase.ts
+│   │       ├── member
+│   │       │   └── GetApprovedMembersUseCase.ts
+│   │       └── notice
+│   │           ├── GetNoticeDetailUseCase.ts
+│   │           └── GetPublishedNoticesUseCase.ts
+│   ├── components
+│   │   ├── common
+│   │   │   ├── Button.tsx
+│   │   │   ├── EmptyState.tsx
+│   │   │   ├── Input.tsx
+│   │   │   └── LoadingSpinner.tsx
+│   │   ├── layout
+│   │   │   ├── Header.tsx
+│   │   │   └── LogoutButton.tsx
+│   │   ├── member
+│   │   │   ├── MemberCard.tsx
+│   │   │   └── MemberProfileCard.tsx
+│   │   └── notice
+│   │       ├── NoticeCard.tsx
+│   │       └── NoticeList.tsx
+│   ├── container
+│   │   ├── admin.container.ts
+│   │   ├── auth.container.ts
+│   │   ├── board.container.ts
+│   │   ├── comment.container.ts
+│   │   ├── member.container.ts
+│   │   └── notice.container.ts
+│   ├── domain
+│   │   ├── entities
+│   │   │   ├── BoardComment.ts
+│   │   │   ├── BoardPost.ts
+│   │   │   ├── Notice.ts
+│   │   │   └── UserProfile.ts
+│   │   ├── repositories
+│   │   │   ├── IBoardRepository.ts
+│   │   │   ├── ICommentRepository.ts
+│   │   │   ├── INoticeRepository.ts
+│   │   │   └── IUserRepository.ts
+│   │   ├── services
+│   │   │   └── PermissionService.ts
+│   │   └── value-objects
+│   │       ├── CommentContent.ts
+│   │       ├── Email.ts
+│   │       ├── PostContent.ts
+│   │       ├── PostTitle.ts
+│   │       ├── Slug.ts
+│   │       ├── UserRole.ts
+│   │       └── UserStatus.ts
+│   ├── infrastructure
+│   │   ├── .DS_Store
+│   │   ├── email
+│   │   ├── mappers
+│   │   ├── repositories
+│   │   │   ├── SupabaseBoardRepository.ts
+│   │   │   ├── SupabaseCommentRepository.ts
+│   │   │   ├── SupabaseNoticeRepository.ts
+│   │   │   └── SupabaseUserRepository.ts
+│   │   └── supabase
+│   │       ├── admin.ts
+│   │       ├── client.ts
+│   │       └── server.ts
+│   ├── lib
+│   │   └── supabase
+│   │       └── proxy.ts
+│   ├── shared
+│   │   ├── constants
+│   │   ├── errors
+│   │   │   ├── AppError.ts
+│   │   │   ├── AuthError.ts
+│   │   │   ├── NotFoundError.ts
+│   │   │   ├── PermissionError.ts
+│   │   │   └── ValidationError.ts
+│   │   ├── types
+│   │   └── utils
+│   │       ├── comment-tree.ts
+│   │       ├── date.ts
+│   │       ├── slug.ts
+│   │       └── validators.ts
+│   └── types
+│       ├── comment.ts
+│       └── supabase.ts
+├── tsconfig.json
+└── tsconfig.tsbuildinfo
+
+74 directories, 150 files

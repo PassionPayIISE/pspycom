@@ -8,6 +8,7 @@ export default function SignupPage() {
   const supabase = createClient();
 
   const [name, setName] = useState("");
+  const [studentId, setStudentId] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -27,7 +28,9 @@ export default function SignupPage() {
     setShowResendButton(false);
 
     const trimmedName = name.trim();
+    const trimmedStudentId = studentId.trim();
     const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
 
     if (!trimmedName) {
       setErrorMessage("이름을 입력하세요.");
@@ -35,13 +38,32 @@ export default function SignupPage() {
       return;
     }
 
+    if (!trimmedStudentId) {
+      setErrorMessage("학번을 입력하세요.");
+      setLoading(false);
+      return;
+    }
+
+    if (!trimmedEmail) {
+      setErrorMessage("이메일을 입력하세요.");
+      setLoading(false);
+      return;
+    }
+
+    if (!trimmedPassword) {
+      setErrorMessage("비밀번호를 입력하세요.");
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email: trimmedEmail,
-      password,
+      password: trimmedPassword,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/confirm`,
         data: {
-          display_name: trimmedName,
+          name: trimmedName,
+          student_id: trimmedStudentId,
         },
       },
     });
@@ -54,20 +76,6 @@ export default function SignupPage() {
 
     if (!data.user) {
       setErrorMessage("회원가입 처리에 실패했습니다.");
-      setLoading(false);
-      return;
-    }
-
-    const { error: profileError } = await supabase.from("profiles").upsert({
-      id: data.user.id,
-      display_name: trimmedName,
-      role: "pending",
-      approved: false,
-      is_active: true,
-    });
-
-    if (profileError) {
-      setErrorMessage("프로필 저장에 실패했습니다.");
       setLoading(false);
       return;
     }
@@ -141,6 +149,24 @@ export default function SignupPage() {
             onChange={(e) => setName(e.target.value)}
             className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
             placeholder="홍길동"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label
+            htmlFor="studentId"
+            className="block text-sm font-medium text-gray-800"
+          >
+            학번
+          </label>
+          <input
+            id="studentId"
+            type="text"
+            required
+            value={studentId}
+            onChange={(e) => setStudentId(e.target.value)}
+            className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+            placeholder="20241234"
           />
         </div>
 

@@ -1,4 +1,3 @@
-// src/domain/entities/BoardComment.ts
 export class BoardComment {
   constructor(
     public readonly id: string,
@@ -7,11 +6,16 @@ export class BoardComment {
     public content: string,
     public readonly createdAt: string,
     public updatedAt: string,
-    public readonly parentId: string | null = null
+    public readonly parentId: string | null = null,
+    public deletedAt: string | null = null
   ) {}
 
   canDelete(userId: string): boolean {
     return this.authorId === userId;
+  }
+
+  isDeleted(): boolean {
+    return this.deletedAt !== null;
   }
 
   updateContent(nextContent: string) {
@@ -23,5 +27,11 @@ export class BoardComment {
 
     this.content = trimmed;
     this.updatedAt = new Date().toISOString();
+  }
+
+  markDeleted() {
+    this.content = "삭제된 댓글입니다.";
+    this.updatedAt = new Date().toISOString();
+    this.deletedAt = new Date().toISOString();
   }
 }

@@ -11,6 +11,7 @@ type BoardCommentRow = {
   created_at: string;
   updated_at: string;
   parent_id: string | null;
+  deleted_at: string | null;
 };
 
 type ProfileRow = {
@@ -25,7 +26,7 @@ export class SupabaseCommentRepository implements ICommentRepository {
   async findByPostId(postId: string): Promise<CommentItemDto[]> {
     const { data: comments, error: commentsError } = await this.supabase
       .from("board_comments")
-      .select("id, post_id, author_id, content, created_at, updated_at, parent_id")
+      .select("id, post_id, author_id, content, created_at, updated_at, parent_id, deleted_at")
       .eq("post_id", postId)
       .order("created_at", { ascending: true });
 
@@ -34,8 +35,7 @@ export class SupabaseCommentRepository implements ICommentRepository {
     }
 
     const commentList = (comments ?? []) as BoardCommentRow[];
-    const authorIds = [...new Set(commentList.map((comment) => comment.author_id))];
-
+    const authorIds = [...new Set(commentList.map((c) => c.author_id))];
     let profileMap: Record<string, ProfileRow> = {};
 
     if (authorIds.length > 0) {
@@ -65,6 +65,7 @@ export class SupabaseCommentRepository implements ICommentRepository {
       created_at: comment.created_at,
       updated_at: comment.updated_at,
       parent_id: comment.parent_id,
+      deleted_at: comment.deleted_at,
       author_name: profileMap[comment.author_id]?.name ?? null,
       author_email: profileMap[comment.author_id]?.email ?? null,
     }));
@@ -73,7 +74,7 @@ export class SupabaseCommentRepository implements ICommentRepository {
   async findEntityById(commentId: string): Promise<BoardComment | null> {
     const { data, error } = await this.supabase
       .from("board_comments")
-      .select("id, post_id, author_id, content, created_at, updated_at, parent_id")
+      .select("id, post_id, author_id, content, created_at, updated_at, parent_id, deleted_at")
       .eq("id", commentId)
       .maybeSingle();
 
@@ -81,9 +82,7 @@ export class SupabaseCommentRepository implements ICommentRepository {
       throw new Error(`댓글 단건 조회 실패: ${error.message}`);
     }
 
-    if (!data) {
-      return null;
-    }
+    if (!data) return null;
 
     const row = data as BoardCommentRow;
 
@@ -94,8 +93,22 @@ export class SupabaseCommentRepository implements ICommentRepository {
       row.content,
       row.created_at,
       row.updated_at,
-      row.parent_id
+      row.parent_id,
+      row.deleted_at
     );
+  }
+
+  async hasChildren(commentId: string): Promise<boolean> {
+    const { data, error } = await this.supabase
+      .from("board_comments")
+      .select("id")
+      .eq("parent_id", commentId);
+
+    if (error) {
+      throw new Error(`답댓 존재 여부 확인 실패: ${error.message}`);
+    }
+
+    return (data ?? []).length > 0;
   }
 
   async create(input: {
@@ -116,6 +129,23 @@ export class SupabaseCommentRepository implements ICommentRepository {
     }
   }
 
+  async softDelete(commentId: string): Promise<void> {
+    const now = new Date().toISOString();
+
+    const { error } = await this.supabase
+      .from("board_comments")
+      .update({
+        content: "삭제된 댓글입니다.",
+        updated_at: now,
+        deleted_at: now,
+      })
+      .eq("id", commentId);
+
+    if (error) {
+      throw new Error(`댓글 소프트 삭제 실패: ${error.message}`);
+    }
+  }
+
   async delete(commentId: string): Promise<void> {
     const { error } = await this.supabase
       .from("board_comments")
@@ -125,5 +155,21 @@ export class SupabaseCommentRepository implements ICommentRepository {
     if (error) {
       throw new Error(`댓글 삭제 실패: ${error.message}`);
     }
+  }
+
+  async findParentId(commentId: string): Promise<string | null> {
+    const { data, error } = await this.supabase
+      .from("board_comments")
+      .select("parent_id")
+      .eq("id", commentId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`부모 댓글 조회 실패: ${error.message}`);
+    }
+
+    if (!data) return null;
+
+    return (data as { parent_id: string | null }).parent_id;
   }
 }

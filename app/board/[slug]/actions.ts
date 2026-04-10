@@ -3,7 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-export async function createComment(formData: FormData) {
+export type CommentActionState = {
+  error?: string;
+  success?: boolean;
+};
+
+export async function createComment(
+  prevState: CommentActionState,
+  formData: FormData
+): Promise<CommentActionState> {
   const supabase = await createClient();
 
   const {
@@ -37,6 +45,7 @@ export async function createComment(formData: FormData) {
   });
 
   if (error) {
+    console.error("댓글 작성 실패:", error.message);
     return { error: "댓글 작성에 실패했습니다." };
   }
 
@@ -44,7 +53,7 @@ export async function createComment(formData: FormData) {
     .from("board_posts")
     .select("slug")
     .eq("id", postId)
-    .single();
+    .maybeSingle();
 
   if (post?.slug) {
     revalidatePath(`/board/${post.slug}`);
@@ -53,7 +62,7 @@ export async function createComment(formData: FormData) {
   return { success: true };
 }
 
-export async function deleteComment(formData: FormData) {
+export async function deleteComment(formData: FormData): Promise<void> {
   const supabase = await createClient();
 
   const {
@@ -62,14 +71,14 @@ export async function deleteComment(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return { error: "로그인 정보가 없습니다." };
+    return;
   }
 
   const commentId = String(formData.get("commentId") ?? "").trim();
   const postSlug = String(formData.get("postSlug") ?? "").trim();
 
   if (!commentId || !postSlug) {
-    return { error: "요청 정보가 올바르지 않습니다." };
+    return;
   }
 
   const { error } = await supabase
@@ -79,10 +88,9 @@ export async function deleteComment(formData: FormData) {
     .eq("author_id", user.id);
 
   if (error) {
-    return { error: "댓글 삭제에 실패했습니다." };
+    console.error("댓글 삭제 실패:", error.message);
+    return;
   }
 
   revalidatePath(`/board/${postSlug}`);
-
-  return { success: true };
 }

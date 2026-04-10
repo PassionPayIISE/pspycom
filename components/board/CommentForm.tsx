@@ -1,13 +1,13 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { createComment } from "@/app/board/[slug]/actions";
-
-const initialState: { error?: string; success?: boolean } = {};
+import { createComment, type CommentActionState } from "@/app/board/[slug]/actions";
 
 type Props = {
   postId: string;
 };
+
+const initialState: CommentActionState = {};
 
 export default function CommentForm({ postId }: Props) {
   const [state, formAction, pending] = useActionState(createComment, initialState);
@@ -32,9 +32,7 @@ export default function CommentForm({ postId }: Props) {
         required
       />
 
-      {state?.error && (
-        <p className="text-sm text-red-600">{state.error}</p>
-      )}
+      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
 
       <div className="flex justify-end">
         <button

@@ -10,94 +10,109 @@ type PageProps = {
 
 type PostRow = {
   id: string;
-  slug: string | null;
+  slug: string;
   title: string;
-  content: string | null;
+  content: string;
+  author_id: string;
   created_at: string;
-  author_id: string | null;
+  updated_at: string;
 };
 
-export default async function BoardDetailPage({ params }: PageProps) {
-  const { slug } = await params;
+export default async function BoardEditPage({ params }: PageProps) {
+  const { slug: rawSlug } = await params;
+  const slug = decodeURIComponent(rawSlug);
+
   const supabase = await createClient();
 
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (userError || !user) {
     redirect("/login");
   }
 
-  let post: PostRow | null = null;
-
-  const bySlug = await supabase
+  const { data: post, error: postError } = await supabase
     .from("board_posts")
-    .select("id, slug, title, content, created_at, author_id")
+    .select("id, slug, title, content, author_id, created_at, updated_at")
     .eq("slug", slug)
     .maybeSingle<PostRow>();
 
-  if (bySlug.error) {
-    throw new Error(`게시글 조회 실패(slug): ${bySlug.error.message}`);
-  }
-
-  post = bySlug.data ?? null;
-
-  if (!post) {
-    const byTitle = await supabase
-      .from("board_posts")
-      .select("id, slug, title, content, created_at, author_id")
-      .eq("title", slug.replace(/-/g, " "))
-      .maybeSingle<PostRow>();
-
-    if (byTitle.error) {
-      throw new Error(`게시글 조회 실패(title): ${byTitle.error.message}`);
-    }
-
-    post = byTitle.data ?? null;
-  }
-
-  if (!post) {
-    const byId = await supabase
-      .from("board_posts")
-      .select("id, slug, title, content, created_at, author_id")
-      .eq("id", slug)
-      .maybeSingle<PostRow>();
-
-    if (byId.error) {
-      throw new Error(`게시글 조회 실패(id): ${byId.error.message}`);
-    }
-
-    post = byId.data ?? null;
+  if (postError) {
+    console.error("수정 페이지 게시글 조회 실패:", postError.message);
+    notFound();
   }
 
   if (!post) {
     notFound();
   }
 
+  if (post.author_id !== user.id) {
+    redirect(`/board/${post.slug}`);
+  }
+
   return (
-    <main className="mx-auto w-full max-w-4xl px-6 py-16">
+    <main className="mx-auto w-full max-w-3xl px-6 py-16">
       <div className="mb-6">
         <Link
-          href="/board"
-          className="text-sm text-gray-600 underline underline-offset-4"
+          href={`/board/${post.slug}`}
+          className="text-sm text-gray-500 hover:underline"
         >
-          목록으로 돌아가기
+          ← 게시글로 돌아가기
         </Link>
       </div>
 
-      <article className="rounded-2xl border border-gray-200 bg-white p-8">
-        <header className="border-b border-gray-200 pb-6">
-          <h1 className="text-3xl font-bold tracking-tight">{post.title}</h1>
-          <p className="mt-3 text-sm text-gray-500">
-            작성일 {new Date(post.created_at).toLocaleString("ko-KR")}
-          </p>
-        </header>
+      <div className="rounded-3xl border p-8">
+        <h1 className="mb-6 text-3xl font-bold tracking-tight">게시글 수정</h1>
 
-        <div className="mt-8 whitespace-pre-wrap text-gray-800">
-          {post.content ?? ""}
-        </div>
-      </article>
+        <form action={`/api/board/${post.slug}/edit`} method="post" className="space-y-5">
+          <input type="hidden" name="postId" value={post.id} />
+
+          <div className="space-y-2">
+            <label htmlFor="title" className="block text-sm font-medium">
+              제목
+            </label>
+            <input
+              id="title"
+              name="title"
+              defaultValue={post.title}
+              required
+              maxLength={120}
+              className="w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-black"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="content" className="block text-sm font-medium">
+              내용
+            </label>
+            <textarea
+              id="content"
+              name="content"
+              defaultValue={post.content}
+              required
+              rows={12}
+              className="w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-black"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Link
+              href={`/board/${post.slug}`}
+              className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-gray-50"
+            >
+              취소
+            </Link>
+            <button
+              type="submit"
+              className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white"
+            >
+              수정 완료
+            </button>
+          </div>
+        </form>
+      </div>
     </main>
   );
 }

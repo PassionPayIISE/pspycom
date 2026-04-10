@@ -30,15 +30,26 @@ export default function CommentList({ comments, currentUserId, postSlug }: Props
     <div className="space-y-4">
       {comments.map((comment) => {
         const isMine = comment.author_id === currentUserId;
-        const profile = comment.profiles?.[0];
-        const authorName = profile?.name || profile?.email || "익명";
+        const authorName = comment.author_profile?.name?.trim() || "익명";
+        const authorEmail = comment.author_profile?.email?.trim() || "이메일 없음";
 
         return (
           <div key={comment.id} className="rounded-2xl border p-4">
-            <div className="mb-2 flex items-center justify-between gap-4">
+            <div className="mb-2 flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold">{authorName}</p>
-                <p className="text-xs text-gray-500">{formatDate(comment.created_at)}</p>
+                <details className="group">
+                  <summary className="cursor-pointer list-none text-sm font-semibold select-none">
+                    {authorName}
+                  </summary>
+                  <div className="mt-1 text-xs text-gray-500">
+                    <p>이름: {authorName}</p>
+                    <p>이메일: {authorEmail}</p>
+                  </div>
+                </details>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  {formatDate(comment.created_at)}
+                </p>
               </div>
 
               {isMine && (

@@ -24,14 +24,17 @@ export class CreateBoardPostUseCase {
       throw new Error("내용을 입력하세요.");
     }
 
+    const now = new Date().toISOString();
+
     const post = new BoardPost(
       crypto.randomUUID(),
       title,
       `${toSlug(title) || "post"}-${crypto.randomUUID().slice(0, 8)}`,
       content,
       input.authorId,
-      new Date().toISOString(),
-      new Date().toISOString()
+      null,
+      now,
+      now
     );
 
     await this.boardRepository.save(post);

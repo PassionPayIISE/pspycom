@@ -6,6 +6,7 @@ export class BoardPost {
     public slug: string,
     public content: string,
     public readonly authorId: string,
+    public readonly authorName: string | null,
     public readonly createdAt: string,
     public updatedAt: string
   ) {}

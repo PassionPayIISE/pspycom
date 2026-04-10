@@ -48,7 +48,8 @@ export default async function BoardDetailPage({ params }: PageProps) {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{post.title}</h1>
           <p className="mt-2 text-sm text-gray-500">
-            작성일 {new Date(post.createdAt).toLocaleString("ko-KR")}
+            작성자 {post.authorName ?? "이름 없음"} · 작성일{" "}
+            {new Date(post.createdAt).toLocaleString("ko-KR")}
           </p>
         </div>
 

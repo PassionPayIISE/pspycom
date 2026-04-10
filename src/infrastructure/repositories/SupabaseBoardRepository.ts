@@ -12,8 +12,34 @@ type BoardPostRow = {
   updated_at: string;
 };
 
+type ProfileRow = {
+  id: string;
+  name: string | null;
+};
+
 export class SupabaseBoardRepository implements IBoardRepository {
   constructor(private readonly supabase: SupabaseClient) {}
+
+  private async getAuthorNameMap(authorIds: string[]): Promise<Map<string, string | null>> {
+    const uniqueAuthorIds = [...new Set(authorIds)].filter(Boolean);
+
+    if (uniqueAuthorIds.length === 0) {
+      return new Map();
+    }
+
+    const { data, error } = await this.supabase
+      .from("profiles")
+      .select("id, name")
+      .in("id", uniqueAuthorIds);
+
+    if (error) {
+      throw new Error(`작성자 정보 조회 실패: ${error.message}`);
+    }
+
+    return new Map(
+      ((data ?? []) as ProfileRow[]).map((profile) => [profile.id, profile.name ?? null])
+    );
+  }
 
   async findAll(): Promise<BoardPost[]> {
     const { data, error } = await this.supabase
@@ -25,7 +51,10 @@ export class SupabaseBoardRepository implements IBoardRepository {
       throw new Error(`게시글 목록 조회 실패: ${error.message}`);
     }
 
-    return ((data ?? []) as BoardPostRow[]).map(
+    const rows = (data ?? []) as BoardPostRow[];
+    const authorNameMap = await this.getAuthorNameMap(rows.map((row) => row.author_id));
+
+    return rows.map(
       (row) =>
         new BoardPost(
           row.id,
@@ -33,6 +62,7 @@ export class SupabaseBoardRepository implements IBoardRepository {
           row.slug,
           row.content,
           row.author_id,
+          authorNameMap.get(row.author_id) ?? null,
           row.created_at,
           row.updated_at
         )
@@ -56,14 +86,27 @@ export class SupabaseBoardRepository implements IBoardRepository {
       return null;
     }
 
+    const row = data as BoardPostRow;
+
+    const { data: profile, error: profileError } = await this.supabase
+      .from("profiles")
+      .select("name")
+      .eq("id", row.author_id)
+      .maybeSingle();
+
+    if (profileError) {
+      throw new Error(`작성자 정보 조회 실패: ${profileError.message}`);
+    }
+
     return new BoardPost(
-      data.id,
-      data.title,
-      data.slug,
-      data.content,
-      data.author_id,
-      data.created_at,
-      data.updated_at
+      row.id,
+      row.title,
+      row.slug,
+      row.content,
+      row.author_id,
+      (profile as { name: string | null } | null)?.name ?? null,
+      row.created_at,
+      row.updated_at
     );
   }
 

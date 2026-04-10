@@ -1,4 +1,3 @@
-// app/board/[slug]/actions.ts
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -51,6 +50,7 @@ export async function createCommentAction(formData: FormData) {
     parentId,
   });
 
+  revalidatePath("/board");
   revalidatePath(`/board/${encodeURIComponent(post.slug)}`);
 }
 
@@ -81,5 +81,6 @@ export async function deleteCommentAction(formData: FormData) {
   const { deleteCommentUseCase } = await createCommentContainer();
   await deleteCommentUseCase.execute(commentId, user.id);
 
+  revalidatePath("/board");
   revalidatePath(`/board/${encodeURIComponent(slug)}`);
 }

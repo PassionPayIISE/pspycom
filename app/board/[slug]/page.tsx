@@ -3,8 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/infrastructure/supabase/server";
 import { createBoardContainer } from "@/container/board.container";
 import { createCommentContainer } from "@/container/comment.container";
+import { buildCommentTree } from "@/shared/utils/comment-tree";
 import CommentForm from "./CommentForm";
-import DeleteCommentButton from "./DeleteCommentButton";
+import CommentItem from "./CommentItem";
 
 type PageProps = {
   params: Promise<{
@@ -26,7 +27,7 @@ export default async function BoardDetailPage({ params }: PageProps) {
     redirect("/login");
   }
 
-  const currentUserId = user!.id;
+  const currentUserId = user.id;
 
   const { getBoardPostDetailUseCase } = await createBoardContainer();
   const post = await getBoardPostDetailUseCase.execute(slug);
@@ -39,6 +40,7 @@ export default async function BoardDetailPage({ params }: PageProps) {
 
   const { getCommentsByPostIdUseCase } = await createCommentContainer();
   const comments = await getCommentsByPostIdUseCase.execute(post.id);
+  const commentTree = buildCommentTree(comments);
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-16">
@@ -70,39 +72,16 @@ export default async function BoardDetailPage({ params }: PageProps) {
         <CommentForm slug={post.slug} />
 
         <div className="mt-6 space-y-3">
-          {comments.length === 0 ? (
+          {commentTree.length === 0 ? (
             <p className="text-sm text-gray-500">아직 댓글이 없습니다.</p>
           ) : (
-            comments.map((comment) => (
-              <div key={comment.id} className="rounded-xl border border-gray-200 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {comment.author_name ?? "이름 없음"}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {comment.author_email ?? ""}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <p className="text-xs text-gray-400">
-                      {new Date(comment.created_at).toLocaleString("ko-KR")}
-                    </p>
-
-                    {comment.author_id === currentUserId ? (
-                      <DeleteCommentButton
-                        commentId={comment.id}
-                        slug={post.slug}
-                      />
-                    ) : null}
-                  </div>
-                </div>
-
-                <p className="mt-3 whitespace-pre-wrap text-sm text-gray-800">
-                  {comment.content}
-                </p>
-              </div>
+            commentTree.map((comment) => (
+              <CommentItem
+                key={comment.id}
+                comment={comment}
+                slug={post.slug}
+                currentUserId={currentUserId}
+              />
             ))
           )}
         </div>

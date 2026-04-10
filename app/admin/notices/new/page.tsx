@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/infrastructure/supabase/server";
 import { createNoticeAction } from "./actions";
@@ -97,12 +98,12 @@ export default async function NewNoticePage() {
             공지 등록
           </button>
 
-          <a
+          <Link
             href="/notice"
             className="rounded-xl border border-gray-300 px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
           >
             취소
-          </a>
+          </Link>
         </div>
       </form>
     </main>

@@ -1,15 +1,7 @@
-// src/infrastructure/repositories/SupabaseCommentRepository.ts
+import { SupabaseClient } from "@supabase/supabase-js";
 import { BoardComment } from "@/domain/entities/BoardComment";
 import { ICommentRepository } from "@/domain/repositories/ICommentRepository";
 import { CommentItemDto } from "@/application/dto/board/CommentItemDto";
-
-type SupabaseLike = {
-  from: (table: string) => {
-    select: (columns: string) => any;
-    insert: (values: Record<string, unknown> | Record<string, unknown>[]) => any;
-    delete: () => any;
-  };
-};
 
 type BoardCommentRow = {
   id: string;
@@ -28,7 +20,7 @@ type ProfileRow = {
 };
 
 export class SupabaseCommentRepository implements ICommentRepository {
-  constructor(private readonly supabase: SupabaseLike) {}
+  constructor(private readonly supabase: SupabaseClient) {}
 
   async findByPostId(postId: string): Promise<CommentItemDto[]> {
     const { data: comments, error: commentsError } = await this.supabase

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/infrastructure/supabase/client";
@@ -23,17 +23,12 @@ export default function LoginPageClient() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
 
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(
+    () => searchParams.get("message") ?? ""
+  );
   const [errorMessage, setErrorMessage] = useState("");
 
   const [showResendButton, setShowResendButton] = useState(false);
-
-  useEffect(() => {
-    const urlMessage = searchParams.get("message");
-    if (urlMessage) {
-      setMessage(urlMessage);
-    }
-  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

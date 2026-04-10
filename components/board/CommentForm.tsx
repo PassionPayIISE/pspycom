@@ -1,46 +1,73 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
-import { createComment, type CommentActionState } from "@/app/board/[slug]/actions";
+import { useState, useTransition } from "react";
+import { createComment } from "@/app/board/actions";
 
 type Props = {
   postId: string;
+  postSlug: string;
+  parentId?: string | null;
+  placeholder?: string;
+  submitLabel?: string;
+  compact?: boolean;
+  onSuccess?: () => void;
 };
 
-const initialState: CommentActionState = {};
+export default function CommentForm({
+  postId,
+  postSlug,
+  parentId = null,
+  placeholder = "댓글을 입력하세요.",
+  submitLabel = "등록",
+  compact = false,
+  onSuccess,
+}: Props) {
+  const [content, setContent] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isPending, startTransition] = useTransition();
 
-export default function CommentForm({ postId }: Props) {
-  const [state, formAction, pending] = useActionState(createComment, initialState);
-  const formRef = useRef<HTMLFormElement>(null);
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setErrorMessage("");
 
-  useEffect(() => {
-    if (state?.success) {
-      formRef.current?.reset();
-    }
-  }, [state]);
+    startTransition(async () => {
+      try {
+        await createComment({
+          postId,
+          postSlug,
+          content,
+          parentId,
+        });
+        setContent("");
+        onSuccess?.();
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error ? error.message : "댓글 작성에 실패했습니다."
+        );
+      }
+    });
+  };
 
   return (
-    <form action={formAction} ref={formRef} className="space-y-3 rounded-2xl border p-4">
-      <input type="hidden" name="postId" value={postId} />
-
+    <form onSubmit={handleSubmit} className={compact ? "space-y-2" : "space-y-3"}>
       <textarea
-        name="content"
-        placeholder="댓글을 입력하세요"
-        rows={4}
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder={placeholder}
+        rows={compact ? 3 : 4}
         maxLength={1000}
-        className="w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-black"
-        required
+        className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none focus:border-black"
       />
 
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
 
       <div className="flex justify-end">
         <button
           type="submit"
-          disabled={pending}
+          disabled={isPending}
           className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          {pending ? "등록 중..." : "댓글 등록"}
+          {isPending ? "처리 중..." : submitLabel}
         </button>
       </div>
     </form>

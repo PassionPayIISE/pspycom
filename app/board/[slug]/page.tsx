@@ -129,12 +129,13 @@ export default async function BoardDetailPage({ params }: PageProps) {
           <h2 className="text-xl font-bold">댓글 {comments.length}개</h2>
         </div>
 
-        <CommentForm postId={post.id} />
+        <CommentForm postId={post.id} postSlug={post.slug} />
 
         <CommentList
           comments={comments}
           currentUserId={user.id}
           postSlug={post.slug}
+          postId={post.id}
         />
       </section>
     </main>

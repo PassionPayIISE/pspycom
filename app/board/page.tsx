@@ -42,7 +42,7 @@ export default async function BoardPage() {
 
   if (postIds.length > 0) {
     const { data: comments, error: commentsError } = await supabase
-      .from("comments")
+      .from("board_comments")
       .select("id, post_id")
       .in("post_id", postIds);
 

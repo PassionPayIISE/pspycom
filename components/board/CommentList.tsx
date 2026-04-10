@@ -1,10 +1,15 @@
-import { deleteComment } from "@/app/board/[slug]/actions";
-import type { BoardComment } from "@/lib/comments";
+"use client";
+
+import { useMemo, useState } from "react";
+import CommentForm from "@/components/board/CommentForm";
+import DeleteCommentButton from "@/components/board/DeleteCommentButton";
+import type { CommentItem } from "@/lib/comments";
 
 type Props = {
-  comments: BoardComment[];
+  comments: CommentItem[];
   currentUserId: string;
   postSlug: string;
+  postId: string;
 };
 
 function formatDate(dateString: string) {
@@ -17,10 +22,37 @@ function formatDate(dateString: string) {
   });
 }
 
-export default function CommentList({ comments, currentUserId, postSlug }: Props) {
+export default function CommentList({
+  comments,
+  currentUserId,
+  postSlug,
+  postId,
+}: Props) {
+  const [replyOpenId, setReplyOpenId] = useState<string | null>(null);
+
+  const { parentComments, childMap } = useMemo(() => {
+    const parents = comments.filter((comment) => comment.parent_id === null);
+    const children = comments.filter((comment) => comment.parent_id !== null);
+
+    const mappedChildren: Record<string, CommentItem[]> = {};
+
+    for (const child of children) {
+      const parentId = child.parent_id as string;
+      if (!mappedChildren[parentId]) {
+        mappedChildren[parentId] = [];
+      }
+      mappedChildren[parentId].push(child);
+    }
+
+    return {
+      parentComments: parents,
+      childMap: mappedChildren,
+    };
+  }, [comments]);
+
   if (comments.length === 0) {
     return (
-      <div className="rounded-2xl border p-6 text-sm text-gray-500">
+      <div className="rounded-2xl border border-gray-200 p-6 text-sm text-gray-500">
         아직 댓글이 없습니다.
       </div>
     );
@@ -28,45 +60,108 @@ export default function CommentList({ comments, currentUserId, postSlug }: Props
 
   return (
     <div className="space-y-4">
-      {comments.map((comment) => {
-        const isMine = comment.author_id === currentUserId;
-        const authorName = comment.author_profile?.name?.trim() || "익명";
-        const authorEmail = comment.author_profile?.email?.trim() || "이메일 없음";
+      {parentComments.map((comment) => {
+        const replies = childMap[comment.id] ?? [];
+        const isAuthor = currentUserId === comment.author_id;
 
         return (
-          <div key={comment.id} className="rounded-2xl border p-4">
-            <div className="mb-2 flex items-start justify-between gap-4">
-              <div>
-                <details className="group">
-                  <summary className="cursor-pointer list-none text-sm font-semibold select-none">
-                    {authorName}
-                  </summary>
-                  <div className="mt-1 text-xs text-gray-500">
-                    <p>이름: {authorName}</p>
-                    <p>이메일: {authorEmail}</p>
-                  </div>
-                </details>
+          <div key={comment.id} className="rounded-2xl border border-gray-200 p-4">
+            <div className="space-y-2">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-black">
+                    {comment.author_name?.trim() || "익명"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {comment.author_email?.trim() || "이메일 없음"}
+                  </p>
+                </div>
 
-                <p className="mt-1 text-xs text-gray-500">
-                  {formatDate(comment.created_at)}
-                </p>
+                <div className="flex shrink-0 items-center gap-3">
+                  <p className="text-xs text-gray-500">
+                    {formatDate(comment.created_at)}
+                  </p>
+                  {isAuthor && (
+                    <DeleteCommentButton
+                      commentId={comment.id}
+                      postSlug={postSlug}
+                    />
+                  )}
+                </div>
               </div>
 
-              {isMine && (
-                <form action={deleteComment}>
-                  <input type="hidden" name="commentId" value={comment.id} />
-                  <input type="hidden" name="postSlug" value={postSlug} />
-                  <button
-                    type="submit"
-                    className="text-xs text-red-600 hover:underline"
-                  >
-                    삭제
-                  </button>
-                </form>
+              <div className="whitespace-pre-wrap text-sm leading-6 text-gray-800">
+                {comment.content}
+              </div>
+
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReplyOpenId((prev) => (prev === comment.id ? null : comment.id))
+                  }
+                  className="text-sm text-gray-500 hover:text-black"
+                >
+                  {replyOpenId === comment.id ? "답글 작성 취소" : "답글 달기"}
+                </button>
+              </div>
+
+              {replyOpenId === comment.id && (
+                <div className="mt-3 rounded-2xl bg-gray-50 p-3">
+                  <CommentForm
+                    postId={postId}
+                    postSlug={postSlug}
+                    parentId={comment.id}
+                    placeholder="답글을 입력하세요."
+                    submitLabel="답글 등록"
+                    compact
+                    onSuccess={() => setReplyOpenId(null)}
+                  />
+                </div>
               )}
             </div>
 
-            <p className="whitespace-pre-wrap text-sm leading-6">{comment.content}</p>
+            {replies.length > 0 && (
+              <div className="mt-4 space-y-3 border-t pt-4">
+                {replies.map((reply) => {
+                  const isReplyAuthor = currentUserId === reply.author_id;
+
+                  return (
+                    <div
+                      key={reply.id}
+                      className="ml-6 rounded-2xl border border-gray-100 bg-gray-50 p-4"
+                    >
+                      <div className="mb-2 flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-black">
+                            ↳ {reply.author_name?.trim() || "익명"}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {reply.author_email?.trim() || "이메일 없음"}
+                          </p>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-3">
+                          <p className="text-xs text-gray-500">
+                            {formatDate(reply.created_at)}
+                          </p>
+                          {isReplyAuthor && (
+                            <DeleteCommentButton
+                              commentId={reply.id}
+                              postSlug={postSlug}
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="whitespace-pre-wrap text-sm leading-6 text-gray-800">
+                        {reply.content}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })}

@@ -1,6 +1,6 @@
 # pspycom
 
-PassionPayIISE 동아리 운영 목적에 맞춰 직접 확장 중인 프로젝트입니다.
+SNUT 산업공학과 학술동아리 PassionPayIISE를 위한 홈페이지 깃허브입니다.
 
 ---
 
@@ -25,11 +25,12 @@ npm install
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
 
 > 실제 사용 중인 키 이름은 프로젝트 코드 기준으로 맞추면 됩니다.
+> 열정페이 깃허브 계정으로 Supabase에 로그인하여 키를 확인할 수 있습니다.
 
 ### 4. 개발 서버 실행
 

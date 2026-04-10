@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/infrastructure/supabase/server";
 import LogoutButton from "./LogoutButton";
 
 export default async function Header() {

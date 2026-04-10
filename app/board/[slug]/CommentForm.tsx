@@ -1,85 +1,52 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useActionState } from "react";
+import { createCommentAction } from "./actions";
 
 type Props = {
-  postId: string;
+  slug: string;
+  parentId?: string | null;
 };
 
-export default function CommentForm({ postId }: Props) {
-  const [content, setContent] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isPending, startTransition] = useTransition();
+const initialState = { error: "" };
 
-  const router = useRouter();
-  const supabase = createClient();
+async function actionHandler(
+  _prevState: typeof initialState,
+  formData: FormData
+) {
+  try {
+    await createCommentAction(formData);
+    return { error: "" };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "댓글 작성 중 오류가 발생했습니다.",
+    };
+  }
+}
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setErrorMessage("");
-
-    const trimmed = content.trim();
-
-    if (!trimmed) {
-      setErrorMessage("댓글 내용을 입력하세요.");
-      return;
-    }
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      setErrorMessage("로그인이 필요합니다.");
-      return;
-    }
-
-    const { error } = await supabase.from("comments").insert({
-      post_id: postId,
-      author_id: user.id,
-      content: trimmed,
-    });
-
-    if (error) {
-      console.error("[comment insert error]", error);
-      setErrorMessage("댓글 등록에 실패했습니다.");
-      return;
-    }
-
-    setContent("");
-
-    startTransition(() => {
-      router.refresh();
-    });
-  };
+export default function CommentForm({ slug, parentId = null }: Props) {
+  const [state, formAction, isPending] = useActionState(actionHandler, initialState);
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mt-8 rounded-2xl border border-gray-200 bg-white p-5"
-    >
-      <h2 className="text-lg font-semibold text-gray-900">댓글 작성</h2>
+    <form action={formAction} className="mt-6 space-y-3">
+      <input type="hidden" name="slug" value={slug} />
+      <input type="hidden" name="parentId" value={parentId ?? ""} />
 
       <textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
+        name="content"
         placeholder="댓글을 입력하세요."
         rows={4}
-        className="mt-4 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none placeholder:text-gray-400 focus:border-black"
+        className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none focus:border-black"
+        required
       />
 
-      {errorMessage ? (
-        <p className="mt-3 text-sm text-red-500">{errorMessage}</p>
-      ) : null}
+      {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
 
-      <div className="mt-4 flex justify-end">
+      <div className="flex justify-end">
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {isPending ? "등록 중..." : "댓글 등록"}
         </button>

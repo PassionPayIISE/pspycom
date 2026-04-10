@@ -1,68 +1,30 @@
+// app/board/[slug]/actions.ts
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/infrastructure/supabase/server";
+import { createCommentContainer } from "@/container/comment.container";
+import { createBoardContainer } from "@/container/board.container";
 
-export type CommentActionState = {
-  error?: string;
-  success?: boolean;
-};
+function decodeSlug(slug: string) {
+  return decodeURIComponent(slug);
+}
 
-export async function createComment(
-  prevState: CommentActionState,
-  formData: FormData
-): Promise<CommentActionState> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return { error: "로그인 후 댓글을 작성할 수 있습니다." };
-  }
-
-  const postId = String(formData.get("postId") ?? "").trim();
+export async function createCommentAction(formData: FormData) {
+  const rawSlug = String(formData.get("slug") ?? "");
+  const slug = decodeSlug(rawSlug);
   const content = String(formData.get("content") ?? "").trim();
+  const parentIdValue = String(formData.get("parentId") ?? "").trim();
+  const parentId = parentIdValue ? parentIdValue : null;
 
-  if (!postId) {
-    return { error: "게시글 정보가 올바르지 않습니다." };
+  if (!slug) {
+    throw new Error("slug가 없습니다.");
   }
 
   if (!content) {
-    return { error: "댓글 내용을 입력하세요." };
+    throw new Error("댓글 내용을 입력하세요.");
   }
 
-  if (content.length > 1000) {
-    return { error: "댓글은 1000자 이하로 입력하세요." };
-  }
-
-  const { error } = await supabase.from("board_comments").insert({
-    post_id: postId,
-    author_id: user.id,
-    content,
-  });
-
-  if (error) {
-    console.error("댓글 작성 실패:", error.message);
-    return { error: "댓글 작성에 실패했습니다." };
-  }
-
-  const { data: post } = await supabase
-    .from("board_posts")
-    .select("slug")
-    .eq("id", postId)
-    .maybeSingle();
-
-  if (post?.slug) {
-    revalidatePath(`/board/${post.slug}`);
-  }
-
-  return { success: true };
-}
-
-export async function deleteComment(formData: FormData): Promise<void> {
   const supabase = await createClient();
 
   const {
@@ -71,26 +33,53 @@ export async function deleteComment(formData: FormData): Promise<void> {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return;
+    throw new Error("로그인이 필요합니다.");
   }
 
+  const { getBoardPostDetailUseCase } = await createBoardContainer();
+  const post = await getBoardPostDetailUseCase.execute(slug);
+
+  if (!post) {
+    throw new Error("게시글을 찾을 수 없습니다.");
+  }
+
+  const { createCommentUseCase } = await createCommentContainer();
+  await createCommentUseCase.execute({
+    postId: post.id,
+    authorId: user.id,
+    content,
+    parentId,
+  });
+
+  revalidatePath(`/board/${encodeURIComponent(post.slug)}`);
+}
+
+export async function deleteCommentAction(formData: FormData) {
   const commentId = String(formData.get("commentId") ?? "").trim();
-  const postSlug = String(formData.get("postSlug") ?? "").trim();
+  const rawSlug = String(formData.get("slug") ?? "").trim();
+  const slug = decodeSlug(rawSlug);
 
-  if (!commentId || !postSlug) {
-    return;
+  if (!commentId) {
+    throw new Error("댓글 id가 없습니다.");
   }
 
-  const { error } = await supabase
-    .from("board_comments")
-    .delete()
-    .eq("id", commentId)
-    .eq("author_id", user.id);
-
-  if (error) {
-    console.error("댓글 삭제 실패:", error.message);
-    return;
+  if (!slug) {
+    throw new Error("slug가 없습니다.");
   }
 
-  revalidatePath(`/board/${postSlug}`);
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  const { deleteCommentUseCase } = await createCommentContainer();
+  await deleteCommentUseCase.execute(commentId, user.id);
+
+  revalidatePath(`/board/${encodeURIComponent(slug)}`);
 }

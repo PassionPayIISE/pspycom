@@ -1,11 +1,10 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/infrastructure/supabase/server";
+import { createAdminClient } from "@/infrastructure/supabase/admin";
 import {
-  approveMember,
-  revokeApproval,
-  deactivateMember,
-  activateMember,
+  approveMemberAction,
+  deactivateMemberAction,
+  activateMemberAction,
 } from "./actions";
 
 type MemberRow = {
@@ -30,7 +29,6 @@ export default async function AdminMembersPage() {
     redirect("/login");
   }
 
-  // 내 정보는 일반 RLS로 조회
   const { data: me, error: meError } = await supabase
     .from("profiles")
     .select("id, role, approved, is_active")
@@ -45,7 +43,6 @@ export default async function AdminMembersPage() {
     redirect("/");
   }
 
-  // 전체 회원 목록은 service role로 서버에서만 조회
   const admin = createAdminClient();
 
   const { data: members, error } = await admin
@@ -99,7 +96,7 @@ export default async function AdminMembersPage() {
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
                     {!member.approved && member.role !== "admin" && (
-                      <form action={approveMember}>
+                      <form action={approveMemberAction}>
                         <input type="hidden" name="userId" value={member.id} />
                         <button
                           type="submit"
@@ -110,20 +107,8 @@ export default async function AdminMembersPage() {
                       </form>
                     )}
 
-                    {member.approved && member.role !== "admin" && (
-                      <form action={revokeApproval}>
-                        <input type="hidden" name="userId" value={member.id} />
-                        <button
-                          type="submit"
-                          className="rounded-lg border border-gray-300 px-3 py-2"
-                        >
-                          승인취소
-                        </button>
-                      </form>
-                    )}
-
                     {member.is_active !== false && member.role !== "admin" && (
-                      <form action={deactivateMember}>
+                      <form action={deactivateMemberAction}>
                         <input type="hidden" name="userId" value={member.id} />
                         <button
                           type="submit"
@@ -135,7 +120,7 @@ export default async function AdminMembersPage() {
                     )}
 
                     {member.is_active === false && member.role !== "admin" && (
-                      <form action={activateMember}>
+                      <form action={activateMemberAction}>
                         <input type="hidden" name="userId" value={member.id} />
                         <button
                           type="submit"

@@ -1,15 +1,20 @@
+// app/notice/[slug]/page.tsx
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getNoticeBySlug } from "@/lib/notices";
+import { createNoticeContainer } from "@/container/notice.container";
 
-interface NoticeDetailPageProps {
-  params: Promise<{ slug: string }>;
-}
+type PageProps = {
+  params: Promise<{
+    slug: string;
+  }>;
+};
 
-export default async function NoticeDetailPage({
-  params,
-}: NoticeDetailPageProps) {
-  const { slug } = await params;
-  const notice = await getNoticeBySlug(slug);
+export default async function NoticeDetailPage({ params }: PageProps) {
+  const { slug: rawSlug } = await params;
+  const slug = decodeURIComponent(rawSlug);
+
+  const { getNoticeDetailUseCase } = await createNoticeContainer();
+  const notice = await getNoticeDetailUseCase.execute(slug);
 
   if (!notice) {
     notFound();
@@ -17,31 +22,29 @@ export default async function NoticeDetailPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-16">
-      <article className="rounded-2xl border border-gray-200 p-8">
-        <div className="mb-6">
-          <div className="mb-3 flex items-center gap-2 text-xs text-gray-500">
-            {notice.pinned && (
-              <span className="rounded-full bg-black px-2 py-1 text-white">
-                고정
-              </span>
-            )}
-            <span className="rounded-full border px-2 py-1">
-              {notice.visibility === "public" && "전체공개"}
-              {notice.visibility === "member" && "회원공개"}
-              {notice.visibility === "private" && "비공개"}
+      <div className="mb-6">
+        <Link href="/notice" className="text-sm text-gray-500 hover:underline">
+          ← 공지사항으로 돌아가기
+        </Link>
+      </div>
+
+      <div className="mb-6">
+        <div className="mb-3 flex items-center gap-2">
+          {notice.pinned ? (
+            <span className="rounded-full bg-black px-2 py-1 text-xs text-white">
+              고정
             </span>
-          </div>
-
+          ) : null}
           <h1 className="text-3xl font-bold tracking-tight">{notice.title}</h1>
-
-          <p className="mt-3 text-sm text-gray-500">
-            {new Date(notice.created_at).toLocaleDateString("ko-KR")}
-          </p>
         </div>
 
-        <div className="whitespace-pre-wrap leading-7 text-gray-800">
-          {notice.content}
-        </div>
+        <p className="text-sm text-gray-500">
+          작성일 {new Date(notice.created_at).toLocaleString("ko-KR")}
+        </p>
+      </div>
+
+      <article className="whitespace-pre-wrap rounded-2xl border border-gray-200 p-6">
+        {notice.content}
       </article>
     </main>
   );

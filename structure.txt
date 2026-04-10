@@ -1,0 +1,120 @@
+.
+├── AGENTS.md
+├── CLAUDE.md
+├── README.md
+├── app
+│   ├── admin
+│   │   ├── invites
+│   │   │   ├── InviteForm.tsx
+│   │   │   └── page.tsx
+│   │   ├── login
+│   │   │   └── page.tsx
+│   │   ├── members
+│   │   │   ├── actions.ts
+│   │   │   └── page.tsx
+│   │   └── notices
+│   │       ├── AdminNoticeManager.tsx
+│   │       ├── [id]
+│   │       ├── actions.ts
+│   │       ├── new
+│   │       └── page.tsx
+│   ├── api
+│   │   ├── admin
+│   │   │   └── invite
+│   │   └── board
+│   │       └── [slug]
+│   ├── apply
+│   ├── auth
+│   │   └── confirm
+│   │       └── route.ts
+│   ├── blocked
+│   │   └── page.tsx
+│   ├── board
+│   │   ├── [slug]
+│   │   │   ├── CommentForm.tsx
+│   │   │   ├── DeleteCommentButton.tsx
+│   │   │   ├── actions.ts
+│   │   │   ├── edit
+│   │   │   └── page.tsx
+│   │   ├── actions.ts
+│   │   ├── new
+│   │   │   ├── actions.ts
+│   │   │   └── page.tsx
+│   │   └── page.tsx
+│   ├── favicon.ico
+│   ├── forgot-password
+│   │   └── page.tsx
+│   ├── globals.css
+│   ├── layout.tsx
+│   ├── login
+│   │   ├── LoginPageClient.tsx
+│   │   └── page.tsx
+│   ├── members
+│   │   ├── actions.ts
+│   │   └── page.tsx
+│   ├── notice
+│   │   ├── [slug]
+│   │   │   └── page.tsx
+│   │   └── page.tsx
+│   ├── page.tsx
+│   ├── pending
+│   │   └── page.tsx
+│   ├── recruit
+│   │   └── page.tsx
+│   ├── reset-password
+│   │   └── page.tsx
+│   ├── signup
+│   │   ├── ResendSignupEmailButton.tsx
+│   │   └── page.tsx
+│   ├── update-password
+│   │   └── page.tsx
+│   ├── verify-email
+│   │   ├── VerifyEmailPageClient.tsx
+│   │   └── page.tsx
+│   └── vision
+│       └── page.tsx
+├── components
+│   ├── board
+│   │   ├── CommentForm.tsx
+│   │   ├── CommentList.tsx
+│   │   └── DeleteCommentButton.tsx
+│   └── layout
+│       ├── Header.tsx
+│       └── LogoutButton.tsx
+├── eslint.config.mjs
+├── lib
+│   ├── activities.ts
+│   ├── auth.ts
+│   ├── board.ts
+│   ├── comments.ts
+│   ├── members.ts
+│   ├── notices.ts
+│   ├── slug.ts
+│   ├── supabase
+│   │   ├── admin.ts
+│   │   ├── client.ts
+│   │   ├── proxy.ts
+│   │   └── server.ts
+│   ├── supabase-admin.ts
+│   ├── supabase-browser.ts
+│   ├── supabase-server.ts
+│   └── supabase.ts
+├── next-env.d.ts
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+├── proxy.ts
+├── public
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── pspylogo.png
+│   ├── vercel.svg
+│   └── window.svg
+├── structure.txt
+├── tsconfig.json
+└── types
+    └── supabase.ts
+
+41 directories, 77 files

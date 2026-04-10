@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase-browser";
+import { createClient } from "@/infrastructure/supabase/client";
 
 export default function AdminLoginPage() {
   const supabase = createClient();

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/infrastructure/supabase/client";
 
 export default function VerifyEmailPageClient() {
   const router = useRouter();

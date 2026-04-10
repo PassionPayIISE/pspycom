@@ -90,12 +90,14 @@ npx tsc --noEmit
 ### 기본 배포 흐름
 
 ```bash
+git checkout -b feat/작업내용
 git add .
 git commit -m "커밋 메시지"
-git push origin main
+git push origin feat/작업내용
 ```
 
-GitHub에 push하면 Vercel이 최신 커밋을 자동으로 배포합니다.
+작업이 완료되면 GitHub에서 main 브랜치로 Pull Request를 생성합니다.
+PR이 merge되면 Vercel이 최신 커밋을 자동으로 배포합니다.
 
 ### 배포 시 확인할 것
 
